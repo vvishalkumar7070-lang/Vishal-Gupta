@@ -1,0 +1,6 @@
+{
+  "name": "SpotMe",
+  "description": "Beginner-friendly AI gym routine builder, exercise form guide, and personalized nutrition tracker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

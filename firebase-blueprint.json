@@ -1,0 +1,343 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User fitness profile, beginner preferences, and daily macro targets.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase UID of the profile owner."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name."
+        },
+        "goal": {
+          "type": "string",
+          "enum": ["build_muscle", "fat_loss", "sport_stamina", "general_fitness"],
+          "description": "Primary fitness objective."
+        },
+        "experienceLevel": {
+          "type": "string",
+          "enum": ["day_one", "returning", "intermediate"],
+          "description": "Training experience level."
+        },
+        "equipmentAccess": {
+          "type": "string",
+          "enum": ["full_gym", "dumbbells_only", "home_bodyweight", "sport_court"],
+          "description": "Available training environment and gear."
+        },
+        "sportFocus": {
+          "type": "string",
+          "description": "Optional sport or primary focus label."
+        },
+        "dietaryStyle": {
+          "type": "string",
+          "enum": ["balanced", "vegetarian", "eggitarian", "vegan", "high_protein_budget"],
+          "description": "Dietary preference for meal guidance."
+        },
+        "daysPerWeek": {
+          "type": "integer",
+          "description": "Target training days per week (2-7)."
+        },
+        "dailyCalorieTarget": {
+          "type": "integer",
+          "description": "Daily calorie goal in kcal."
+        },
+        "dailyProteinTargetG": {
+          "type": "integer",
+          "description": "Daily protein target in grams."
+        },
+        "dailyCarbsTargetG": {
+          "type": "integer",
+          "description": "Daily carbohydrate target in grams."
+        },
+        "dailyFatTargetG": {
+          "type": "integer",
+          "description": "Daily fat target in grams."
+        },
+        "onboardingCompleted": {
+          "type": "boolean",
+          "description": "Whether initial setup has been completed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "goal",
+        "experienceLevel",
+        "equipmentAccess",
+        "sportFocus",
+        "dietaryStyle",
+        "daysPerWeek",
+        "dailyCalorieTarget",
+        "dailyProteinTargetG",
+        "dailyCarbsTargetG",
+        "dailyFatTargetG",
+        "onboardingCompleted",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WorkoutDay": {
+      "title": "WorkoutDay",
+      "description": "Personalized daily workout routine with beginner form cues and 1-tap machine swaps.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "dayNumber": {
+          "type": "integer",
+          "description": "Day index 1 to 7."
+        },
+        "title": {
+          "type": "string",
+          "description": "Day title such as Push & Core."
+        },
+        "focusArea": {
+          "type": "string",
+          "description": "Primary muscle groups or sport focus."
+        },
+        "estimatedMinutes": {
+          "type": "integer",
+          "description": "Estimated workout duration in minutes."
+        },
+        "isRestDay": {
+          "type": "boolean",
+          "description": "Whether this day is an active recovery or rest day."
+        },
+        "exercises": {
+          "type": "array",
+          "description": "Bounded list (max 15) of prescribed exercises with beginner cues and alternatives."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "dayNumber",
+        "title",
+        "focusArea",
+        "estimatedMinutes",
+        "isRestDay",
+        "exercises",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "WorkoutLog": {
+      "title": "WorkoutLog",
+      "description": "Completed workout session entry for consistency tracking.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "YYYY-MM-DD local date key."
+        },
+        "dayTitle": {
+          "type": "string",
+          "description": "Completed workout day title."
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "description": "Workout duration in minutes."
+        },
+        "completedExercises": {
+          "type": "integer",
+          "description": "Count of exercises completed."
+        },
+        "totalSetsCompleted": {
+          "type": "integer",
+          "description": "Total sets completed in the session."
+        },
+        "feeling": {
+          "type": "string",
+          "enum": ["great", "good", "tough"],
+          "description": "Post-workout exertion feeling."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional user notes."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "dateKey",
+        "dayTitle",
+        "durationMinutes",
+        "completedExercises",
+        "totalSetsCompleted",
+        "feeling",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MealLog": {
+      "title": "MealLog",
+      "description": "Daily meal and macro intake log entry.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "YYYY-MM-DD local date key."
+        },
+        "mealSlot": {
+          "type": "string",
+          "enum": ["breakfast", "lunch", "snack", "dinner", "post_workout"],
+          "description": "Meal slot category."
+        },
+        "name": {
+          "type": "string",
+          "description": "Meal name or food description."
+        },
+        "calories": {
+          "type": "integer",
+          "description": "Calories in kcal."
+        },
+        "proteinG": {
+          "type": "integer",
+          "description": "Protein in grams."
+        },
+        "carbsG": {
+          "type": "integer",
+          "description": "Carbohydrates in grams."
+        },
+        "fatG": {
+          "type": "integer",
+          "description": "Fat in grams."
+        },
+        "isAiSuggested": {
+          "type": "boolean",
+          "description": "Whether the meal came from an AI recommendation."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "dateKey",
+        "mealSlot",
+        "name",
+        "calories",
+        "proteinG",
+        "carbsG",
+        "fatG",
+        "isAiSuggested",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BuddyMessage": {
+      "title": "BuddyMessage",
+      "description": "Saved message in the Ask Your Gym Buddy coach chat.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase UID."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "coach"],
+          "description": "Message author role."
+        },
+        "text": {
+          "type": "string",
+          "description": "Message body."
+        },
+        "contextTag": {
+          "type": "string",
+          "description": "Optional exercise or nutrition context tag."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "role",
+        "text",
+        "contextTag",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-isolated fitness profile and personalized nutrition targets."
+    },
+    "/users/{userId}/workoutDays/{dayId}": {
+      "schema": { "$ref": "#/entities/WorkoutDay" },
+      "description": "User's personalized weekly workout routine days."
+    },
+    "/users/{userId}/workoutLogs/{logId}": {
+      "schema": { "$ref": "#/entities/WorkoutLog" },
+      "description": "User's logged workout sessions."
+    },
+    "/users/{userId}/mealLogs/{mealId}": {
+      "schema": { "$ref": "#/entities/MealLog" },
+      "description": "User's daily meal and macro intake entries."
+    },
+    "/users/{userId}/buddyChats/{messageId}": {
+      "schema": { "$ref": "#/entities/BuddyMessage" },
+      "description": "User's Ask Your Gym Buddy chat history."
+    }
+  }
+}

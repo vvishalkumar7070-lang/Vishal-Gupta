@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources>
+    <string name="firestore_database_id" translatable="false">ai-studio-android-spotme-54c0b386-1832-48cf-a769-20cdf11d25a5</string>
+    <string name="recaptcha_site_key" translatable="false">6LdilCIuAAAAAKZo6x5EZPhulKGl-R2AqLgU-B3I</string>
+</resources>
