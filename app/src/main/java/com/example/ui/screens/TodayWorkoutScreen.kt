@@ -117,7 +117,7 @@ fun TodayWorkoutScreen(
     onQuickSwap: (WorkoutDay, ExercisePrescription) -> Unit = { _, _ -> },
     onAiSwap: (WorkoutDay, ExercisePrescription) -> Unit = { _, _ -> },
     onAskBuddyAboutExercise: (String) -> Unit = {},
-    onLogWorkout: (WorkoutDay, String, String) -> Unit = { _, _, _ -> }
+    onLogWorkout: (WorkoutDay, String, String) -> Unit = { _, _, _ -> }    
 ) {
     val activeDay = workoutDays.find { it.dayNumber == session.selectedDayNumber }
         ?: workoutDays.firstOrNull()
