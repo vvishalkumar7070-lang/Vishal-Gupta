@@ -76,15 +76,15 @@ private val FollowUpPrompts = listOf(
 @Composable
 fun BuddyCoachScreen(
     messages: List<BuddyMessage>,
-    streamingReply: String?,
-    isAsking: Boolean,
-    selectedRole: BuddyRole,
-    activeContextTag: String,
-    liveSummary: String,
-    onSelectRole: (BuddyRole) -> Unit,
-    onClearContextTag: () -> Unit,
-    onSendQuestion: (question: String, contextTag: String) -> Unit,
-    onClearChat: () -> Unit
+    streamingReply: String? = null,
+    isAsking: Boolean = false,
+    selectedRole: BuddyRole = BuddyRole.FORM_SPOTTER,
+    activeContextTag: String = "",
+    liveSummary: String = "",
+    onSelectRole: (BuddyRole) -> Unit = {},
+    onClearContextTag: () -> Unit = {},
+    onSendQuestion: (question: String, contextTag: String) -> Unit = { _, _ -> },
+    onClearChat: () -> Unit = {}
 ) {
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
