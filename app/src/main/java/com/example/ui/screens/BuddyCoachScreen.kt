@@ -15,17 +15,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,13 +51,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.example.data.ai.BuddyRole
 import com.example.data.model.BuddyMessage
 
 private val StarterQuestions = listOf(
-    "How do I adjust a cable pulley machine?",
-    "Am I picking weights too light or too heavy?",
-    "What should I eat 1 hour before training?",
-    "My knees cave in during squats — how do I fix it?"
+    "Bhai 100g paneer me kitna protein hota hai?",
+    "Sattu vs Whey: Desi lifters ke liye kya better hai?",
+    "Incline dumbbell press correct bench angle?",
+    "Lateral raise me traps engage ho rahe hain, kaise rokein?",
+    "Hostel/PG me budget high-protein diet?",
+    "Creatine kab aur kaise lena chahiye?"
+)
+
+private val FollowUpPrompts = listOf(
+    "Machine pe work-in kaise poochen?",
+    "Desi ₹12 pre-workout formula",
+    "Soya chunks benefits & preparation",
+    "Next session me weight kitna badhayein?",
+    "Squat knee caving fix",
+    "Amul high protein buttermilk guide"
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -59,7 +78,10 @@ fun BuddyCoachScreen(
     messages: List<BuddyMessage>,
     streamingReply: String?,
     isAsking: Boolean,
+    selectedRole: BuddyRole,
     activeContextTag: String,
+    liveSummary: String,
+    onSelectRole: (BuddyRole) -> Unit,
     onClearContextTag: () -> Unit,
     onSendQuestion: (question: String, contextTag: String) -> Unit,
     onClearChat: () -> Unit
@@ -84,7 +106,7 @@ fun BuddyCoachScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                    .padding(horizontal = 18.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -109,7 +131,7 @@ fun BuddyCoachScreen(
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            text = "No question is too basic — ask anything",
+                            text = "${selectedRole.label} • ${selectedRole.subtitle}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -128,6 +150,45 @@ fun BuddyCoachScreen(
                         Spacer(modifier = Modifier.size(4.dp))
                         Text("Clear")
                     }
+                }
+            }
+
+            // Interactive Role / Persona Switcher
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            ) {
+                items(BuddyRole.entries, key = { it.id }) { role ->
+                    val roleIcon = when (role) {
+                        BuddyRole.FORM_SPOTTER -> Icons.Filled.FitnessCenter
+                        BuddyRole.NUTRITION_BUDDY -> Icons.Filled.Restaurant
+                        BuddyRole.HYPE_MINDSET -> Icons.Filled.Psychology
+                        BuddyRole.QUICK_TIP -> Icons.Filled.Bolt
+                    }
+                    FilterChip(
+                        selected = selectedRole == role,
+                        onClick = { onSelectRole(role) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = roleIcon,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = role.label,
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier.testTag("buddy_role_${role.id}")
+                    )
                 }
             }
 
@@ -152,11 +213,24 @@ fun BuddyCoachScreen(
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Text(
-                                    text = "Stuck on a machine or wondering about reps or food?",
+                                    text = "Multi-turn coaching with your live routine & macro context.",
                                     style = MaterialTheme.typography.titleMedium
                                 )
+                                if (liveSummary.isNotBlank()) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = liveSummary,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(10.dp)
+                                        )
+                                    }
+                                }
                                 Text(
-                                    text = "Tap a quick starter below or type your question:",
+                                    text = "Tap a starter below or switch coach roles above:",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -191,6 +265,21 @@ fun BuddyCoachScreen(
                             isUser = false,
                             text = streamingReply.ifBlank { "Thinking..." },
                             contextTag = ""
+                        )
+                    }
+                }
+            }
+
+            if (messages.isNotEmpty() && !isAsking) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    items(FollowUpPrompts) { prompt ->
+                        SuggestionChip(
+                            onClick = { onSendQuestion(prompt, activeContextTag) },
+                            label = { Text(prompt, style = MaterialTheme.typography.bodySmall) }
                         )
                     }
                 }
@@ -239,7 +328,7 @@ fun BuddyCoachScreen(
                 OutlinedTextField(
                     value = inputText,
                     onValueChange = { inputText = it },
-                    placeholder = { Text("Ask about form, machines, reps, or food...") },
+                    placeholder = { Text("Ask ${selectedRole.label} anything...") },
                     maxLines = 3,
                     modifier = Modifier
                         .weight(1f)
