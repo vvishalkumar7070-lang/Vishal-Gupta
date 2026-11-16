@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,15 +13,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Button
@@ -30,6 +35,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,14 +53,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import com.example.R
 import com.example.auth.attemptAutoSignIn
-import com.example.auth.onGoogleSignInClicked
+import com.example.auth.signInWithPhoneNumberOnly
+import kotlinx.coroutines.launch
 
 @Composable
 fun AuthScreen(
@@ -63,7 +73,12 @@ fun AuthScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val credentialManager = remember(context) { CredentialManager.create(context) }
+    val focusManager = LocalFocusManager.current
 
+    val prefs = remember(context) { context.getSharedPreferences("spotme_auth", Context.MODE_PRIVATE) }
+    val initialPhone = remember { prefs.getString("saved_phone_number", "") ?: "" }
+
+    var phoneNumber by remember { mutableStateOf(initialPhone) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -72,9 +87,32 @@ fun AuthScreen(
             context = context,
             credentialManager = credentialManager,
             onAuthSuccess = onAuthSuccess,
-            onUnauthenticated = { /* wait for user tap */ },
+            onUnauthenticated = { /* wait for user to enter number */ },
             scope = scope
         )
+    }
+
+    fun submitPhoneLogin() {
+        val cleanDigits = phoneNumber.filter { it.isDigit() }
+        if (cleanDigits.length < 10) {
+            errorMessage = "Please enter a valid 10-digit mobile number."
+            return
+        }
+
+        errorMessage = null
+        isLoading = true
+        focusManager.clearFocus()
+
+        scope.launch {
+            val formatted = "+91 " + cleanDigits.takeLast(10)
+            val result = signInWithPhoneNumberOnly(context, formatted)
+            isLoading = false
+            result.onSuccess {
+                onAuthSuccess()
+            }.onFailure { err ->
+                errorMessage = err.localizedMessage ?: "Sign in failed. Please try again."
+            }
+        }
     }
 
     Scaffold { innerPadding ->
@@ -98,7 +136,7 @@ fun AuthScreen(
                     .padding(horizontal = 24.dp, vertical = 20.dp)
                     .widthIn(max = 560.dp)
                     .align(Alignment.TopCenter),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -140,20 +178,20 @@ fun AuthScreen(
                             contentDescription = "Friendly gym coach spotting a beginner",
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(200.dp)
+                                .height(190.dp)
                                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
                             contentScale = ContentScale.Crop
                         )
                         Column(
-                            modifier = Modifier.padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Surface(
                                 color = MaterialTheme.colorScheme.primaryContainer,
                                 shape = RoundedCornerShape(50)
                             ) {
                                 Text(
-                                    text = "ZERO GYMTIMIDATION",
+                                    text = "FAST MOBILE LOGIN • ZERO FRICTION",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -161,15 +199,145 @@ fun AuthScreen(
                             }
                             Text(
                                 text = "Know exactly what to lift, how to do it, and what to eat.",
-                                style = MaterialTheme.typography.headlineMedium,
+                                style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Built for beginners & everyday athletes who don't have a personal trainer on the gym floor.",
+                                text = "No email or password needed. Log in directly with your mobile number and start your routine immediately.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    }
+                }
+
+                // MOBILE NUMBER LOGIN CARD
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Text(
+                            text = "Log In with Mobile Number",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.height(56.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                ) {
+                                    Text(
+                                        text = "🇮🇳 +91",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            OutlinedTextField(
+                                value = phoneNumber,
+                                onValueChange = { input ->
+                                    if (input.all { it.isDigit() || it == ' ' || it == '-' } && input.length <= 15) {
+                                        phoneNumber = input
+                                    }
+                                },
+                                placeholder = { Text("98765 43210") },
+                                label = { Text("Mobile Number") },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Phone,
+                                        contentDescription = "Phone icon"
+                                    )
+                                },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Phone,
+                                    imeAction = ImeAction.Done
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = { submitPhoneLogin() }
+                                ),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("phone_input")
+                            )
+                        }
+
+                        if (errorMessage != null) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = errorMessage!!,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = { submitPhoneLogin() },
+                            enabled = !isLoading && phoneNumber.filter { it.isDigit() }.length >= 10,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .testTag("phone_sign_in_button")
+                                .testTag("google_sign_in_button"),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.5.dp
+                                )
+                            } else {
+                                Text(
+                                    text = "Enter SpotMe ➔",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.size(8.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "✓ Zero double verification. Your routines and logged sets are instantly saved under your mobile profile.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -190,77 +358,6 @@ fun AuthScreen(
                         subtitle = "Ask awkward floor questions anytime with your workout context built in."
                     )
                 }
-
-                if (errorMessage != null) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = errorMessage!!,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.padding(14.dp)
-                        )
-                    }
-                }
-
-                Button(
-                    onClick = {
-                        errorMessage = null
-                        isLoading = true
-                        onGoogleSignInClicked(
-                            context = context,
-                            credentialManager = credentialManager,
-                            onAuthSuccess = {
-                                isLoading = false
-                                onAuthSuccess()
-                            },
-                            onAuthError = { msg ->
-                                isLoading = false
-                                errorMessage = msg
-                            },
-                            scope = scope,
-                            onAuthCancelled = { isLoading = false }
-                        )
-                    },
-                    enabled = !isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .testTag("google_sign_in_button"),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.5.dp
-                        )
-                    } else {
-                        Text(
-                            text = "Continue with Google",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null
-                        )
-                    }
-                }
-
-                Text(
-                    text = "Your routines, logged sets, and meal history sync securely to your Google account.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
