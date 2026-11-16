@@ -97,12 +97,12 @@ fun NutritionScreen(
     todayDateKey: String,
     mealLogs: List<MealLog>,
     session: SessionUiState,
-    onAdjustWater: (Int) -> Unit,
-    onRequestAiMeal: (remainingCal: Int, remainingProtein: Int, slot: String) -> Unit,
-    onEstimateMeal: (description: String, slot: String) -> Unit,
-    onDismissSuggestion: () -> Unit,
-    onAddMeal: (slot: String, name: String, cal: Int, pro: Int, carbs: Int, fat: Int, isAi: Boolean) -> Unit,
-    onDeleteMeal: (String) -> Unit
+    onAdjustWater: (Int) -> Unit = {},
+    onRequestAiMeal: (remainingCal: Int, remainingProtein: Int, slot: String) -> Unit = { _, _, _ -> },
+    onEstimateMeal: (description: String, slot: String) -> Unit = { _, _ -> },
+    onDismissSuggestion: () -> Unit = {},
+    onAddMeal: (slot: String, name: String, cal: Int, pro: Int, carbs: Int, fat: Int, isAi: Boolean) -> Unit = { _, _, _, _, _, _, _ -> },
+    onDeleteMeal: (String) -> Unit = {}
 ) {
     val todayMeals = remember(mealLogs, todayDateKey) {
         mealLogs.filter { it.dateKey == todayDateKey }
@@ -129,6 +129,9 @@ fun NutritionScreen(
     var mealDescription by remember { mutableStateOf("") }
     var showCustomDialog by remember { mutableStateOf(false) }
     var selectedFoodCategory by remember { mutableStateOf("all") }
+    
+var waterGlasses by remember { mutableStateOf(5) }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -254,11 +257,11 @@ fun NutritionScreen(
                             }
                             Column {
                                 Text(
-                                    text = "Hydration: ${session.waterGlassesToday} / 8 glasses",
+                                    text = "Hydration: $waterGlasses / 8 glasses",
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    text = "${session.waterGlassesToday * 250} ml today",
+                                    text = "${waterGlasses * 250} ml today",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -266,7 +269,7 @@ fun NutritionScreen(
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Surface(
-                                onClick = { onAdjustWater(-1) },
+                                onClick = { waterGlasses = (waterGlasses - 1).coerceAtLeast(0); onAdjustWater(-1) },
                                 shape = RoundedCornerShape(10.dp),
                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                 modifier = Modifier
@@ -278,7 +281,7 @@ fun NutritionScreen(
                                 }
                             }
                             Surface(
-                                onClick = { onAdjustWater(1) },
+                                onClick = { waterGlasses = (waterGlasses + 1).coerceAtMost(16); onAdjustWater(1) },
                                 shape = RoundedCornerShape(10.dp),
                                 color = MaterialTheme.colorScheme.primaryContainer,
                                 modifier = Modifier
@@ -614,8 +617,9 @@ fun NutritionScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                                val slotLabel = meal.mealSlot.replace('_', ' ').uppercase()                                
                                 Text(
-                                    text = "${meal.mealSlot.replace(\"_\", \" \").uppercase()} • ${meal.calories} kcal • ${meal.proteinG}g P • ${meal.carbsG}g C • ${meal.fatG}g F",
+                                    text = "$slotLabel • ${meal.calories} kcal • ${meal.proteinG}g P • ${meal.carbsG}g C • ${meal.fatG}g F",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
