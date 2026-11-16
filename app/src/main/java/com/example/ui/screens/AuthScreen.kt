@@ -33,8 +33,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -63,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.credentials.CredentialManager
 import com.example.R
 import com.example.auth.attemptAutoSignIn
+import com.example.auth.onGoogleSignInClicked
 import com.example.auth.signInWithPhoneNumberOnly
 import kotlinx.coroutines.launch
 
@@ -76,7 +79,7 @@ fun AuthScreen(
     val focusManager = LocalFocusManager.current
 
     val prefs = remember(context) { context.getSharedPreferences("spotme_auth", Context.MODE_PRIVATE) }
-    val initialPhone = remember { prefs.getString("saved_phone_number", "") ?: "" }
+    val initialPhone = remember { prefs.getString("saved_phone_number", "8252223143") ?: "8252223143" }
 
     var phoneNumber by remember { mutableStateOf(initialPhone) }
     var isLoading by remember { mutableStateOf(false) }
@@ -110,7 +113,12 @@ fun AuthScreen(
             result.onSuccess {
                 onAuthSuccess()
             }.onFailure { err ->
-                errorMessage = err.localizedMessage ?: "Sign in failed. Please try again."
+                val rawMsg = err.localizedMessage ?: "Sign in failed"
+                errorMessage = if (rawMsg.contains("administrator", ignoreCase = true)) {
+                    "Firebase Admin Notice: Anonymous login is disabled in your Firebase Console. Please toggle 'Anonymous' to Enabled in Firebase Console, or use the 1-Tap Google button below!"
+                } else {
+                    rawMsg
+                }
             }
         }
     }
@@ -261,7 +269,7 @@ fun AuthScreen(
                                         phoneNumber = input
                                     }
                                 },
-                                placeholder = { Text("98765 43210") },
+                                placeholder = { Text("8252223143") },
                                 label = { Text("Mobile Number") },
                                 leadingIcon = {
                                     Icon(
@@ -331,6 +339,54 @@ fun AuthScreen(
                                     contentDescription = null
                                 )
                             }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            HorizontalDivider(modifier = Modifier.weight(1f))
+                            Text(
+                                text = "  OR  ",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            HorizontalDivider(modifier = Modifier.weight(1f))
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                errorMessage = null
+                                isLoading = true
+                                onGoogleSignInClicked(
+                                    context = context,
+                                    credentialManager = credentialManager,
+                                    onAuthSuccess = {
+                                        if (phoneNumber.isNotBlank()) {
+                                            prefs.edit().putString("saved_phone_number", "+91 " + phoneNumber.filter { it.isDigit() }).apply()
+                                        }
+                                        isLoading = false
+                                        onAuthSuccess()
+                                    },
+                                    onAuthError = { msg ->
+                                        isLoading = false
+                                        errorMessage = msg
+                                    },
+                                    scope = scope,
+                                    onAuthCancelled = { isLoading = false }
+                                )
+                            },
+                            enabled = !isLoading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text(
+                                text = "1-Tap Sign In with Google",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
 
                         Text(
