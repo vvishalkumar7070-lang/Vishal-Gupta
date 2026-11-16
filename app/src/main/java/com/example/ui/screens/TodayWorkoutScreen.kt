@@ -107,17 +107,17 @@ fun TodayWorkoutScreen(
     profile: UserProfile?,
     workoutDays: List<WorkoutDay>,
     session: SessionUiState,
-    onSelectDay: (Int) -> Unit,
-    onToggleSet: (ExercisePrescription) -> Unit,
-    onAdjustWeight: (WorkoutDay, ExercisePrescription, Double) -> Unit,
-    onStartTimer: (Int) -> Unit,
-    onToggleTimerPause: () -> Unit,
-    onToggleTimerSound: () -> Unit,
-    onStopTimer: () -> Unit,
-    onQuickSwap: (WorkoutDay, ExercisePrescription) -> Unit,
-    onAiSwap: (WorkoutDay, ExercisePrescription) -> Unit,
-    onAskBuddyAboutExercise: (String) -> Unit,
-    onLogWorkout: (WorkoutDay, String, String) -> Unit
+    onSelectDay: (Int) -> Unit = {},
+    onToggleSet: (ExercisePrescription) -> Unit = {},
+    onAdjustWeight: (WorkoutDay, ExercisePrescription, Double) -> Unit = { _, _, _ -> },
+    onStartTimer: (Int) -> Unit = {},
+    onToggleTimerPause: () -> Unit = {},
+    onToggleTimerSound: () -> Unit = {},
+    onStopTimer: () -> Unit = {},
+    onQuickSwap: (WorkoutDay, ExercisePrescription) -> Unit = { _, _ -> },
+    onAiSwap: (WorkoutDay, ExercisePrescription) -> Unit = { _, _ -> },
+    onAskBuddyAboutExercise: (String) -> Unit = {},
+    onLogWorkout: (WorkoutDay, String, String) -> Unit = { _, _, _ -> }
 ) {
     val activeDay = workoutDays.find { it.dayNumber == session.selectedDayNumber }
         ?: workoutDays.firstOrNull()
