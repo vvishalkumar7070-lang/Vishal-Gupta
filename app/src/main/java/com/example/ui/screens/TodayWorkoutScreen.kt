@@ -925,7 +925,6 @@ private fun ExerciseCoachCard(
         }
         }
     }
-}
 
 private fun formatWeight(weight: Double): String {
     return if (weight % 1.0 == 0.0) {
