@@ -28,6 +28,8 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 private const val AUTH_TAG = "Auth"
+private const val PREFS_NAME = "spotme_auth"
+private const val KEY_SAVED_PHONE = "saved_phone_number"
 
 fun FirebaseAuth.authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
     val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
@@ -35,6 +37,21 @@ fun FirebaseAuth.authStateFlow(): Flow<FirebaseUser?> = callbackFlow {
     }
     addAuthStateListener(listener)
     awaitClose { removeAuthStateListener(listener) }
+}
+
+suspend fun signInWithPhoneNumberOnly(
+    context: Context,
+    phoneNumber: String
+): Result<FirebaseUser> = runCatching {
+    val auth = Firebase.auth
+    val user = auth.currentUser ?: auth.signInAnonymously().await().user
+    requireNotNull(user) { "Failed to authenticate session" }
+
+    // Save phone number locally for frictionless re-login
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    prefs.edit().putString(KEY_SAVED_PHONE, phoneNumber).apply()
+
+    user
 }
 
 fun attemptAutoSignIn(
@@ -48,39 +65,22 @@ fun attemptAutoSignIn(
         onAuthSuccess()
         return
     }
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (_: Exception) {
-        onUnauthenticated()
+
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    val savedPhone = prefs.getString(KEY_SAVED_PHONE, null)
+    if (!savedPhone.isNullOrBlank()) {
+        scope.launch {
+            try {
+                Firebase.auth.signInAnonymously().await()
+                onAuthSuccess()
+            } catch (_: Exception) {
+                onUnauthenticated()
+            }
+        }
         return
     }
 
-    val googleIdOption = GetGoogleIdOption.Builder()
-        .setFilterByAuthorizedAccounts(true)
-        .setServerClientId(clientId)
-        .setAutoSelectEnabled(true)
-        .build()
-
-    val request = GetCredentialRequest.Builder()
-        .addCredentialOption(googleIdOption)
-        .build()
-
-    scope.launch {
-        try {
-            val result = credentialManager.getCredential(context, request)
-            val credential = result.credential
-            if (credential is CustomCredential && credential.type == TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                val googleIdToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
-                val authCredential = GoogleAuthProvider.getCredential(googleIdToken, null)
-                Firebase.auth.signInWithCredential(authCredential).await()
-                onAuthSuccess()
-            } else {
-                onUnauthenticated()
-            }
-        } catch (_: Exception) {
-            onUnauthenticated()
-        }
-    }
+    onUnauthenticated()
 }
 
 fun onGoogleSignInClicked(
