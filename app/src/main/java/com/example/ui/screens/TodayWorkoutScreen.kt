@@ -125,11 +125,13 @@ fun TodayWorkoutScreen(
     val haptic = LocalHapticFeedback.current
     var showFinishDialog by remember { mutableStateOf(false) }
     var demoExercise by remember { mutableStateOf<ExercisePrescription?>(null) }
+    var isTimerPaused by remember { mutableStateOf(false) }
+    var timerSoundEnabled by remember { mutableStateOf(true) }
 
-    LaunchedEffect(session.timerCompletedCount) {
-        if (session.timerCompletedCount > 0) {
+    LaunchedEffect(session.restTimerRemainingSec) {
+        if (session.restTimerRemainingSec == 1 && session.isTimerRunning) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            if (session.timerSoundEnabled) {
+            if (timerSoundEnabled) {
                 runCatching {
                     val tone = ToneGenerator(AudioManager.STREAM_MUSIC, 70)
                     tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 260)
@@ -224,20 +226,29 @@ fun TodayWorkoutScreen(
                 }
             }
 
-            if (session.isTimerRunning || session.isTimerPaused || session.restTimerRemainingSec > 0) {
+            if (session.isTimerRunning || isTimerPaused || session.restTimerRemainingSec > 0) {
                 item {
                     RestTimerBanner(
                         remainingSec = session.restTimerRemainingSec,
                         totalSec = session.restTimerTotalSec.coerceAtLeast(1),
-                        isPaused = session.isTimerPaused,
-                        soundEnabled = session.timerSoundEnabled,
-                        onTogglePause = onToggleTimerPause,
-                        onToggleSound = onToggleTimerSound,
+                        isPaused = isTimerPaused,
+                        soundEnabled = timerSoundEnabled,
+                        onTogglePause = {
+                            isTimerPaused = !isTimerPaused
+                            onToggleTimerPause()
+                        },
+                        onToggleSound = {
+                            timerSoundEnabled = !timerSoundEnabled
+                            onToggleTimerSound()
+                        },
                         onSubtractSeconds = {
                             onStartTimer((session.restTimerRemainingSec - 15).coerceAtLeast(5))
                         },
                         onAddSeconds = { onStartTimer(session.restTimerRemainingSec + 15) },
-                        onStop = onStopTimer
+                        onStop = {
+                            isTimerPaused = false
+                            onStopTimer()
+                        }
                     )
                 }
             }
@@ -451,6 +462,7 @@ fun TodayWorkoutScreen(
         )
     }
 }
+
 @Composable
 private fun RestTimerBanner(
     remainingSec: Int,
@@ -911,6 +923,7 @@ private fun ExerciseCoachCard(
                 }
             }
         }
+        }
     }
 }
 
@@ -921,6 +934,7 @@ private fun formatWeight(weight: Double): String {
         String.format("%.1f", weight)
     }
 }
+
 @Composable
 private fun FinishWorkoutDialog(
     dayTitle: String,
@@ -1082,7 +1096,7 @@ private fun ExerciseDemoDialog(
                                             <html>
                                             <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
                                             <body style="margin:0;padding:0;background:#0E131B;display:flex;align-items:center;justify-content:center;height:100vh;">
-                                                <img src="$gifUrl" style="max-width:100%;max-height:100%;border-radius:14px;object-fit:contain;" />
+                                                <img src="${'$'}gifUrl" style="max-width:100%;max-height:100%;border-radius:14px;object-fit:contain;" />
                                             </body>
                                             </html>
                                         """.trimIndent()
