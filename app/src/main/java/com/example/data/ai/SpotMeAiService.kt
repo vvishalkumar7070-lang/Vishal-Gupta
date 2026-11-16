@@ -102,16 +102,13 @@ class SpotMeAiService {
                                     "formMistakeToAvoid" to Schema.string(description = "Common mistake beginners make on this move"),
                                     "alternativeExercise" to Schema.string(description = "Nearby machine, dumbbell, or band swap if equipment is occupied"),
                                     "alternativeCue" to Schema.string(description = "Setup cue for the alternative exercise")
-                                ),
-                                required = listOf("name", "muscleGroup", "sets", "reps", "restSeconds", "suggestedWeightKg", "setupCue", "formMistakeToAvoid", "alternativeExercise", "alternativeCue")
+                                )
                             )
                         )
-                    ),
-                    required = listOf("dayNumber", "title", "focusArea", "estimatedMinutes", "isRestDay", "exercises")
+                    )
                 )
             )
-        ),
-        required = listOf("dailyCalorieTarget", "dailyProteinTargetG", "dailyCarbsTargetG", "dailyFatTargetG", "days")
+        )
     )
 
     private val mealSchema = Schema.obj(
@@ -581,12 +578,12 @@ class SpotMeAiService {
     }
 
     fun askGymBuddyStream(
-        profile: UserProfile?,
+        profile: UserProfile? = null,
         question: String,
-        contextTag: String,
-        history: List<BuddyMessage>,
-        role: BuddyRole,
-        workoutContextSummary: String
+        contextTag: String = "",
+        history: List<BuddyMessage> = emptyList(),
+        role: BuddyRole = BuddyRole.FORM_SPOTTER,
+        workoutContextSummary: String = ""
     ): Flow<String> = flow {
         val contextSummary = if (profile != null) {
             "User Profile: Name=${profile.displayName}, Goal=${profile.goal}, Level=${profile.experienceLevel}, " +
