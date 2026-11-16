@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,7 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,21 +63,31 @@ import com.example.data.model.MealLog
 import com.example.data.model.MealSuggestion
 import com.example.data.model.UserProfile
 import com.example.ui.viewmodel.SessionUiState
+import kotlin.math.roundToInt
 
-private data class QuickMealTemplate(
+private data class DesiFuelItem(
     val slot: String,
     val name: String,
+    val category: String, // "all", "veg", "egg", "non_veg", "hostel"
     val calories: Int,
     val proteinG: Int,
     val carbsG: Int,
-    val fatG: Int
+    val fatG: Int,
+    val approxPriceRs: Int,
+    val badge: String
 )
 
-private val QuickMeals = listOf(
-    QuickMealTemplate("breakfast", "Oats, Milk & Peanut Butter", 420, 18, 54, 14),
-    QuickMealTemplate("post_workout", "Protein Shake + Banana", 260, 26, 30, 3),
-    QuickMealTemplate("lunch", "Chicken / Paneer Rice Bowl", 560, 38, 60, 16),
-    QuickMealTemplate("snack", "Greek Yogurt & Nuts", 230, 17, 16, 10)
+private val IndianGenZMeals = listOf(
+    DesiFuelItem("snack", "Desi Sattu Power Shake", "veg", 280, 24, 36, 5, 20, "₹0.83/g P • Desi Superfood"),
+    DesiFuelItem("snack", "Amul High Protein Buttermilk", "veg", 85, 15, 5, 0, 25, "₹1.66/g P • Zero Sugar"),
+    DesiFuelItem("lunch", "Boiled Soya Chunks Chaat (50g)", "veg", 185, 26, 16, 1, 15, "₹0.58/g P • Ultra Budget"),
+    DesiFuelItem("breakfast", "3 Boiled Eggs + 2 Multigrain Toast", "egg", 310, 22, 28, 12, 30, "₹1.36/g P • Gold Standard"),
+    DesiFuelItem("dinner", "100g Paneer Bhurji + 2 Rotis", "veg", 360, 20, 32, 16, 55, "₹2.75/g P • High Satiety"),
+    DesiFuelItem("breakfast", "Peanut Butter & Banana Brown Toast", "hostel", 290, 12, 38, 11, 25, "Hostel Friendly"),
+    DesiFuelItem("post_workout", "Pre-Workout: Black Coffee + Banana", "hostel", 105, 2, 27, 0, 12, "₹12 Clean Pre"),
+    DesiFuelItem("dinner", "Double Egg Chicken Roll (Hostel Style)", "non_veg", 480, 32, 40, 18, 90, "32g Protein Punch"),
+    DesiFuelItem("breakfast", "Hostel Kettle Oats + Milk + Almonds", "hostel", 360, 16, 48, 12, 35, "Electric Kettle Quick"),
+    DesiFuelItem("post_workout", "Amul High Protein Lassi", "veg", 130, 15, 12, 1, 25, "₹1.66/g P • Cold Refresh")
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -83,7 +97,9 @@ fun NutritionScreen(
     todayDateKey: String,
     mealLogs: List<MealLog>,
     session: SessionUiState,
+    onAdjustWater: (Int) -> Unit,
     onRequestAiMeal: (remainingCal: Int, remainingProtein: Int, slot: String) -> Unit,
+    onEstimateMeal: (description: String, slot: String) -> Unit,
     onDismissSuggestion: () -> Unit,
     onAddMeal: (slot: String, name: String, cal: Int, pro: Int, carbs: Int, fat: Int, isAi: Boolean) -> Unit,
     onDeleteMeal: (String) -> Unit
@@ -104,8 +120,15 @@ fun NutritionScreen(
     val remainingCal = (caloriesTarget - caloriesDone).coerceAtLeast(0)
     val remainingProtein = (proteinTarget - proteinDone).coerceAtLeast(0)
 
+    val calProgress by animateFloatAsState(
+        targetValue = (caloriesDone.toFloat() / caloriesTarget.toFloat()).coerceIn(0f, 1f),
+        label = "cal_progress"
+    )
+
     var selectedSlot by remember { mutableStateOf("lunch") }
+    var mealDescription by remember { mutableStateOf("") }
     var showCustomDialog by remember { mutableStateOf(false) }
+    var selectedFoodCategory by remember { mutableStateOf("all") }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -127,7 +150,7 @@ fun NutritionScreen(
                             contentDescription = "Balanced protein meal bowl illustration",
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(130.dp)
+                                .height(120.dp)
                                 .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)),
                             contentScale = ContentScale.Crop
                         )
@@ -166,7 +189,7 @@ fun NutritionScreen(
                             }
 
                             LinearProgressIndicator(
-                                progress = { (caloriesDone.toFloat() / caloriesTarget.toFloat()).coerceIn(0f, 1f) },
+                                progress = { calProgress },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(8.dp),
@@ -201,6 +224,80 @@ fun NutritionScreen(
                 }
             }
 
+            // Interactive Hydration Tracker
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.WaterDrop,
+                                    contentDescription = "Hydration",
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(8.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Hydration: ${session.waterGlassesToday} / 8 glasses",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "${session.waterGlassesToday * 250} ml today",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Surface(
+                                onClick = { onAdjustWater(-1) },
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .testTag("water_minus_button")
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Filled.Remove, contentDescription = "Remove water glass")
+                                }
+                            }
+                            Surface(
+                                onClick = { onAdjustWater(1) },
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .testTag("water_plus_button")
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Filled.Add,
+                                        contentDescription = "Add water glass",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 Card(
                     shape = RoundedCornerShape(22.dp),
@@ -211,12 +308,12 @@ fun NutritionScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = "Not sure what to eat next?",
+                            text = "Smart Meal Helper",
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                         Text(
-                            text = "Get a realistic meal idea tailored to your remaining ${remainingProtein}g protein & $remainingCal kcal.",
+                            text = "Need ideas for your remaining ${remainingProtein}g protein & $remainingCal kcal, or want to estimate a meal you just ate?",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
                         )
@@ -239,6 +336,37 @@ fun NutritionScreen(
                             }
                         }
 
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = mealDescription,
+                                onValueChange = { mealDescription = it },
+                                placeholder = { Text("Describe what you ate (e.g. 2 eggs & toast)") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("describe_meal_input")
+                            )
+                            Button(
+                                onClick = {
+                                    val desc = mealDescription
+                                    mealDescription = ""
+                                    onEstimateMeal(desc, selectedSlot)
+                                },
+                                enabled = mealDescription.isNotBlank() && !session.isGeneratingMeal,
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .height(52.dp)
+                                    .testTag("estimate_meal_button")
+                            ) {
+                                Text("Estimate")
+                            }
+                        }
+
                         Button(
                             onClick = { onRequestAiMeal(remainingCal, remainingProtein, selectedSlot) },
                             enabled = !session.isGeneratingMeal,
@@ -255,7 +383,7 @@ fun NutritionScreen(
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.size(8.dp))
-                                Text("Finding a practical meal...")
+                                Text("Working on your macros...")
                             } else {
                                 Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null)
                                 Spacer(modifier = Modifier.size(8.dp))
@@ -267,14 +395,14 @@ fun NutritionScreen(
                         if (suggestion != null) {
                             AiMealSuggestionCard(
                                 suggestion = suggestion,
-                                onLog = {
+                                onLog = { scale ->
                                     onAddMeal(
                                         suggestion.mealSlot,
-                                        suggestion.name,
-                                        suggestion.calories,
-                                        suggestion.proteinG,
-                                        suggestion.carbsG,
-                                        suggestion.fatG,
+                                        if (scale == 1f) suggestion.name else "${suggestion.name} (${scale}x)",
+                                        (suggestion.calories * scale).roundToInt(),
+                                        (suggestion.proteinG * scale).roundToInt(),
+                                        (suggestion.carbsG * scale).roundToInt(),
+                                        (suggestion.fatG * scale).roundToInt(),
                                         true
                                     )
                                 },
@@ -291,10 +419,17 @@ fun NutritionScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Quick Add Everyday Meals",
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Column {
+                        Text(
+                            text = "Desi High-Protein Quick Add",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Budget Indian staples with ₹/g protein ratings",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     OutlinedButton(
                         onClick = { showCustomDialog = true },
                         shape = RoundedCornerShape(12.dp),
@@ -309,32 +444,122 @@ fun NutritionScreen(
 
             item {
                 FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        "all" to "All Foods",
+                        "veg" to "🌱 Pure Veg",
+                        "egg" to "🥚 Eggetarian",
+                        "non_veg" to "🍗 Non-Veg",
+                        "hostel" to "🎒 Hostel / Budget (< ₹30)"
+                    ).forEach { (catKey, catLabel) ->
+                        FilterChip(
+                            selected = selectedFoodCategory == catKey,
+                            onClick = { selectedFoodCategory = catKey },
+                            label = { Text(catLabel, style = MaterialTheme.typography.labelSmall) }
+                        )
+                    }
+                }
+            }
+
+            item {
+                val filteredMeals = remember(selectedFoodCategory) {
+                    if (selectedFoodCategory == "all") IndianGenZMeals
+                    else IndianGenZMeals.filter { it.category == selectedFoodCategory }
+                }
+
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    QuickMeals.forEachIndexed { index, qm ->
+                    filteredMeals.forEachIndexed { index, qm ->
                         Surface(
                             onClick = {
                                 onAddMeal(qm.slot, qm.name, qm.calories, qm.proteinG, qm.carbsG, qm.fatG, false)
                             },
                             shape = RoundedCornerShape(14.dp),
                             color = MaterialTheme.colorScheme.surface,
-                            tonalElevation = 1.dp,
+                            tonalElevation = 2.dp,
                             modifier = Modifier.testTag("quick_meal_$index")
                         ) {
-                            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
-                                Text(
-                                    text = "+ ${qm.name}",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "${qm.calories} kcal • ${qm.proteinG}g P",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Column(
+                                modifier = Modifier
+                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                                    .widthIn(max = 280.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "+ ${qm.name}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "${qm.proteinG}g Protein",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = "${qm.calories} kcal • ~₹${qm.approxPriceRs}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = qm.badge,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
+                    }
+                }
+            }
+
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "💡 Gen-Z Indian Lifter Hacks",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "• Soya chunks (₹15) & Chana Sattu (₹20) offer the highest protein per rupee in India (< ₹1/g).\n" +
+                                "• Pair Sattu with milk or eggs to complete its leucine profile for muscle building.\n" +
+                                "• Amul High Protein Buttermilk gives 15g clean whey protein with zero sugar for just ₹25.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -363,7 +588,7 @@ fun NutritionScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "Nothing logged yet today. Tap a quick meal above or ask AI what to eat next!",
+                                text = "Nothing logged yet today. Tap a quick meal above or describe what you ate!",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -390,7 +615,7 @@ fun NutritionScreen(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "${meal.mealSlot.replace("_", " ").uppercase()} • ${meal.calories} kcal • ${meal.proteinG}g P • ${meal.carbsG}g C • ${meal.fatG}g F",
+                                    text = "${meal.mealSlot.replace(\"_\", \" \").uppercase()} • ${meal.calories} kcal • ${meal.proteinG}g P • ${meal.carbsG}g C • ${meal.fatG}g F",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -433,6 +658,10 @@ private fun MacroBarBox(
     target: Int,
     modifier: Modifier = Modifier
 ) {
+    val barProgress by animateFloatAsState(
+        targetValue = (current.toFloat() / target.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
+        label = "macro_bar_$label"
+    )
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
         shape = RoundedCornerShape(14.dp),
@@ -454,7 +683,7 @@ private fun MacroBarBox(
                 color = MaterialTheme.colorScheme.onSurface
             )
             LinearProgressIndicator(
-                progress = { (current.toFloat() / target.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f) },
+                progress = { barProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(5.dp)
@@ -466,9 +695,15 @@ private fun MacroBarBox(
 @Composable
 private fun AiMealSuggestionCard(
     suggestion: MealSuggestion,
-    onLog: () -> Unit,
+    onLog: (Float) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var portionScale by remember(suggestion.name) { mutableFloatStateOf(1f) }
+    val scaledCal = (suggestion.calories * portionScale).roundToInt()
+    val scaledPro = (suggestion.proteinG * portionScale).roundToInt()
+    val scaledCarbs = (suggestion.carbsG * portionScale).roundToInt()
+    val scaledFat = (suggestion.fatG * portionScale).roundToInt()
+
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(16.dp),
@@ -484,7 +719,7 @@ private fun AiMealSuggestionCard(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "${suggestion.calories} kcal • ${suggestion.proteinG}g P • ${suggestion.carbsG}g C • ${suggestion.fatG}g F",
+                text = "$scaledCal kcal • ${scaledPro}g P • ${scaledCarbs}g C • ${scaledFat}g F",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.tertiary
             )
@@ -494,10 +729,27 @@ private fun AiMealSuggestionCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = "Prep: ${suggestion.quickPrepNote}",
+                text = "Note: ${suggestion.quickPrepNote}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Portion:",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                listOf(0.5f to "0.5x", 1f to "1x", 1.5f to "1.5x").forEach { (scale, label) ->
+                    FilterChip(
+                        selected = portionScale == scale,
+                        onClick = { portionScale = scale },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -506,7 +758,7 @@ private fun AiMealSuggestionCard(
                     Text("Dismiss")
                 }
                 Button(
-                    onClick = onLog,
+                    onClick = { onLog(portionScale) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
