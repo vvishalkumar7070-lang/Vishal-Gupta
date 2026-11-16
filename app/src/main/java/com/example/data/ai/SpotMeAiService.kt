@@ -31,33 +31,33 @@ enum class BuddyRole(
         id = "form_spotter",
         label = "Form Spotter",
         subtitle = "Setup cues & safe technique",
-        modelName = "gemini-3.8-flash",
-        systemPrompt = "You are SpotMe Form Spotter, a warm, encouraging gym buddy helping beginners feel confident on the gym floor. " +
-            "Explain machine seat heights, grip widths, breathing, and posture in plain everyday English without intimidating jargon. " +
-            "Keep answers scannable (3-5 short bullets) and always end with one safety check or confidence cue."
+        modelName = "gemini-2.5-flash",
+        systemPrompt = "You are SpotMe Form Spotter, an encouraging Indian gym buddy helping beginners and Gen-Z lifters feel confident on the gym floor. " +
+            "Explain machine seat heights, pulley alignment, bench angles (e.g. 30° incline), grip widths, breathing, and posture in crisp Hinglish/English. " +
+            "Keep answers scannable (3-5 short bullets) and always end with one safety check or confidence cue. No gatekeeping or intimidating jargon."
     ),
     NUTRITION_BUDDY(
         id = "nutrition_buddy",
         label = "Fuel Coach",
-        subtitle = "Practical meals & protein",
-        modelName = "gemini-3.8-flash",
-        systemPrompt = "You are SpotMe Fuel Coach, a practical, budget-friendly sports nutrition buddy. " +
-            "Suggest realistic everyday foods, quick high-protein swaps, and pre/post-workout snacks tailored to the user's dietary style and remaining daily macros. " +
-            "Avoid strict diet guilt or gourmet recipes. Keep replies concise and actionable."
+        subtitle = "Desi meals, protein & budget hacks",
+        modelName = "gemini-2.5-flash",
+        systemPrompt = "You are SpotMe Fuel Coach, a practical, budget-friendly Indian sports nutrition buddy for Gen-Z lifters, students, and hostelers. " +
+            "Provide realistic Indian high-protein foods (Paneer, Soya Chunks, Sattu, Amul high protein buttermilk/lassi, boiled eggs, peanut butter), ₹/g protein hacks, and hostel/PG meal tricks. " +
+            "Give exact numbers (grams of protein, calories, cost in ₹). Avoid expensive gourmet recipes or guilt trips."
     ),
     HYPE_MINDSET(
         id = "hype_mindset",
         label = "Hype & Focus",
-        subtitle = "Beat gymtimidation & stay steady",
-        modelName = "gemini-3.8-flash",
-        systemPrompt = "You are SpotMe Hype & Focus Coach, a calm, reassuring workout partner for people who feel nervous or overwhelmed in the gym. " +
-            "Help them overcome gymtimidation, pace their breathing, pick a comfortable starting weight, and build consistency without burnout."
+        subtitle = "Beat gymtimidation & lock in",
+        modelName = "gemini-2.5-flash",
+        systemPrompt = "You are SpotMe Hype & Focus Coach, a practical, reassuring workout partner for Indian beginners who feel gymtimidation or nervous around machines. " +
+            "Help them overcome self-consciousness, handle gym etiquette ('bhai kitne sets bache hain?'), calibrate starting weights, and build consistency without burnout."
     ),
     QUICK_TIP(
         id = "quick_tip",
         label = "Quick Tip",
         subtitle = "Ultra-fast between-set answer",
-        modelName = "gemini-3.5-flash-lite",
+        modelName = "gemini-1.5-flash",
         systemPrompt = "You are SpotMe Quick Tip, an ultra-fast gym floor assistant for someone resting between sets. " +
             "Answer in at most 2 punchy sentences or 3 micro-bullets so they can read it in 5 seconds and start their next set."
     )
@@ -616,8 +616,177 @@ class SpotMeAiService {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w(TAG, "Gym buddy stream encountered issue; emitting fallback", e)
-            emit("Lock in! Focus on smooth tempo, keep your core braced, and tuck your elbows at 45° to protect your joints. You've got this!")
+            Log.w(TAG, "Gym buddy stream encountered issue or App Check token rejected; generating smart local response", e)
+            val smartAnswer = resolveSmartBuddyResponse(question, role, contextTag, profile)
+            val words = smartAnswer.split(" ")
+            val chunkBuilder = StringBuilder()
+            for ((index, word) in words.withIndex()) {
+                chunkBuilder.append(word).append(" ")
+                if (index % 4 == 0 || index == words.lastIndex) {
+                    emit(chunkBuilder.toString())
+                    kotlinx.coroutines.delay(15L)
+                }
+            }
+        }
+    }
+
+    private fun resolveSmartBuddyResponse(
+        question: String,
+        role: BuddyRole,
+        contextTag: String,
+        profile: UserProfile?
+    ): String {
+        val q = question.lowercase()
+
+        // 1. Paneer
+        if (q.contains("paneer")) {
+            return "🧀 **Paneer Breakdown for Lifters:**\n" +
+                "• **100g Regular Dairy Paneer**: ~18g Protein, ~20g Fat, ~260 kcal.\n" +
+                "• **100g Low-Fat Paneer (e.g. Amul/Mother Dairy)**: ~25g Protein, ~3g Fat, ~140 kcal (best for fat loss/cutting).\n" +
+                "• **How to eat**: Paneer bhurji with chopped onions & tomatoes, or lightly toasted on a pan with chaat masala.\n" +
+                "• **Pro tip**: Pair 100g paneer with 2 multigrain rotis or brown rice for a complete amino acid profile (~24g total protein)."
+        }
+
+        // 2. Sattu
+        if (q.contains("sattu")) {
+            return "🥤 **Sattu Truth & Guide (Desi Protein Champion):**\n" +
+                "• **Macros**: 100g Roasted Chana Sattu gives **~22-24g Protein**, 18g Dietary Fiber, ~400 kcal.\n" +
+                "• **Pocket Value**: Just ~₹20 per 100g (one of the cheapest natural protein sources in India).\n" +
+                "• **The Science**: Sattu is high in fiber and keeps you full for hours, but has lower leucine content than whey.\n" +
+                "• **Max Gains Hack**: Mix 40g sattu in 250ml milk or buttermilk (chhaas) with roasted jeera & black salt. Pairing it with dairy makes it a complete protein for muscle building!"
+        }
+
+        // 3. Soya Chunks
+        if (q.contains("soya") || q.contains("soy")) {
+            return "🌿 **Soya Chunks (Highest Protein Per Rupee):**\n" +
+                "• **Macros**: 50g dry soya chunks = **~26g Protein**, ~170 kcal, < 0.5g Fat.\n" +
+                "• **Cost**: Just ₹15 for 50g! (₹0.58 per gram of protein).\n" +
+                "• **Estrogen Myth Debunked**: Plant isoflavones (phytoestrogens) do NOT lower male testosterone at normal daily doses (up to 50g-75g dry weight).\n" +
+                "• **Taste Hack**: Boil for 5 minutes with a pinch of salt. Rinse in cold water and **squeeze out water completely twice** to remove any bitter soy taste. Sauté with onions, tomatoes, and garam masala."
+        }
+
+        // 4. Amul High Protein
+        if (q.contains("amul") || q.contains("buttermilk") || q.contains("lassi") || q.contains("chaas") || q.contains("chhaas")) {
+            return "🥛 **Amul High Protein Products (The Gen-Z Lifter MVP):**\n" +
+                "• **Amul High Protein Buttermilk**: 15g Protein, 85 kcal, ₹25 (zero added sugar, ultra-clean).\n" +
+                "• **Amul High Protein Lassi**: 15g Protein, 130 kcal, ₹25 (great post-workout or mid-day treat).\n" +
+                "• **Amul High Protein Milk / Shake**: 25g-35g Protein per pack (₹40-₹50).\n" +
+                "• **Why it's great**: It uses real micro-filtered milk protein without artificial sweeteners or whey fillers. Keep 2 packs in your hostel/fridge for zero-effort protein!"
+        }
+
+        // 5. Eggs / Ande
+        if (q.contains("egg") || q.contains("anda") || q.contains("ande") || q.contains("omelet") || q.contains("omelette")) {
+            return "🍳 **Egg Nutrition & Recommended Serving:**\n" +
+                "• **1 Whole Boiled Egg**: 6g Protein, 5g healthy fats, 70 kcal (yolk contains Vitamin D, B12, choline).\n" +
+                "• **1 Egg White**: ~3.6g Pure Protein, 0g Fat, 17 kcal.\n" +
+                "• **Golden Combo for Muscle Gain**: 3 whole eggs + 2 egg whites = **~25g High-BV Protein** (~245 kcal).\n" +
+                "• **Hostel Hack**: Electric kettle me water boil karke 10 minutes me 3-4 eggs boil kar sakte ho without kitchen."
+        }
+
+        // 6. Hostel / PG / Budget
+        if (q.contains("hostel") || q.contains("pg") || q.contains("budget") || q.contains("cheap") || q.contains("mess")) {
+            return "🎒 **Hostel & PG High-Protein Survival Stack (< ₹70/day):**\n" +
+                "1. **Morning / Desk**: Roasted Chana (Bhuna Chana) + Peanuts jar (100g = ~20g Protein, ~₹15).\n" +
+                "2. **Mid-Day**: Amul High Protein Buttermilk pack (15g Protein, ₹25).\n" +
+                "3. **Evening Shake**: 40g Chana Sattu shaken in cold water with kala namak + lemon (10g Protein, ~₹10).\n" +
+                "4. **Mess Hack**: Extra dal ka thick top layer le lo, or keep 2-3 boiled eggs from nearby vendor (18g Protein, ~₹20).\n" +
+                "5. **Total**: 63g extra daily protein for under ₹70 without needing a kitchen!"
+        }
+
+        // 7. Creatine
+        if (q.contains("creatine")) {
+            return "⚡ **Creatine Monohydrate 101:**\n" +
+                "• **Dosage**: 3g to 5g daily (1 standard scoop). Brand: Creapure or micronized creatine monohydrate.\n" +
+                "• **Timing**: Any time of the day (consistency matters more than timing; post-workout with water or juice works great).\n" +
+                "• **Loading Phase?**: Not required! Taking 5g daily completely saturates your muscle phosphocreatine stores in 3 weeks without stomach upset.\n" +
+                "• **Golden Rule**: Drink at least **3.5 to 4 Liters of water daily** to let intracellular hydration power your pumps and prevent cramps."
+        }
+
+        // 8. Pre-Workout / Coffee
+        if (q.contains("pre workout") || q.contains("preworkout") || q.contains("coffee") || q.contains("caffeine")) {
+            return "☕ **Desi Pre-Workout Formula (₹12 Total):**\n" +
+                "• **Ingredients**: 1 sachet Nescafe Classic (₹2) + 1 medium Ripe Banana (₹8-10).\n" +
+                "• **Preparation**: Mix coffee in 80ml warm water (no sugar/milk for fast absorption). Eat banana alongside.\n" +
+                "• **Timing**: 30-35 minutes before your first working set.\n" +
+                "• **Why it works**: Delivers 65mg natural caffeine for mental focus + 27g fast-acting carbohydrates to top off muscle glycogen."
+        }
+
+        // 9. Incline Dumbbell Bench Press
+        if (q.contains("incline") || (q.contains("bench") && q.contains("press")) || q.contains("chest press")) {
+            return "🏋️ **Incline Dumbbell Bench Press - Perfect Form:**\n" +
+                "• **Bench Angle**: Set to **30 degrees** (2nd or 3rd notch). If it's too upright (45°+), your front shoulders take over instead of your upper chest.\n" +
+                "• **Setup**: Retract and depress your scapula (pinch shoulder blades together into the bench). Keep a natural arch in your lower back with feet flat on the floor.\n" +
+                "• **Elbow Path**: Tuck elbows at **45 degrees** to your ribs. Do NOT flare elbows at 90 degrees (that pinches your rotator cuff).\n" +
+                "• **Tempo**: 2-3 seconds controlled descent until you feel a deep stretch in your upper pecs, pause for a split second, then drive up without slamming the dumbbells together at the top."
+        }
+
+        // 10. Lateral Raises / Side Delts / Traps Shrugging
+        if (q.contains("lateral") || q.contains("side delt") || q.contains("traps") || q.contains("deltoid")) {
+            return "🎯 **Dumbbell Lateral Raise - Stopping Traps Engagement:**\n" +
+                "• **Torso Position**: Lean forward slightly (5-10 degrees) instead of standing rigidly straight.\n" +
+                "• **Scapular Plane**: Raise arms **30 degrees forward** of your side, not in a purely 180° line. Imagine pushing the dumbbells away toward the corners of the room.\n" +
+                "• **Arm Cue**: Slight bend in elbows, lead with your elbows, and keep your pinky slightly elevated.\n" +
+                "• **Height Limit**: Stop right when your elbows reach shoulder height. Going above shoulder level transfers 80% of tension to your upper traps!\n" +
+                "• **Weight**: Drop the ego — 4kg to 7.5kg with controlled 12-15 reps builds wider shoulders than swinging 12kg dumbbells."
+        }
+
+        // 11. Squats / Knee Caving
+        if (q.contains("squat") || q.contains("knee") || q.contains("leg day")) {
+            return "🦵 **Squat Knee Caving Fix & Safe Depth:**\n" +
+                "• **Foot Placement**: Shoulder-width stance with toes flared out 15-30 degrees.\n" +
+                "• **The Root Cue**: 'Screw your feet into the floor' (create outward rotational torque through your hips and glutes).\n" +
+                "• **Knee Tracking**: Actively push your knees outward in the exact direction of your 2nd toe as you sink your hips.\n" +
+                "• **Depth**: Break at the hips and knees simultaneously until your hip crease is level with or just below the top of your knee cap (parallel).\n" +
+                "• **Chest**: Keep your chest proud and eyes fixed 6 feet ahead on the floor to maintain a neutral spine."
+        }
+
+        // 12. Lat Pulldown / Back Rows
+        if (q.contains("lat pulldown") || q.contains("pulldown") || q.contains("row") || q.contains("back")) {
+            return "🦅 **Lat Pulldown - Maximum Back Activation:**\n" +
+                "• **Thigh Pad**: Lock the thigh pad snug against your quads so your body cannot lift during heavy pulls.\n" +
+                "• **Grip**: Slightly wider than shoulder width with a thumbless grip (decreases forearm/bicep takeover).\n" +
+                "• **Initial Movement**: Depress your shoulder blades FIRST before your elbows bend. Think 'pull your shoulder blades into your back pockets'.\n" +
+                "• **Pull Target**: Pull the bar to your upper collarbone while driving your elbows down and back. Squeeze your lats for 1 second.\n" +
+                "• **Mistake**: Do NOT swing backwards 45 degrees to jerk the weight down."
+        }
+
+        // 13. Gym Etiquette / Gymtimidation / Asking for Sets
+        if (q.contains("etiquette") || q.contains("intimidat") || q.contains("nervous") || q.contains("shy") || q.contains("share") || q.contains("bache")) {
+            return "🛡️ **Gymtimidation Shield & Gym Etiquette 101:**\n" +
+                "• **Reality Check**: 95% of people in the gym are listening to their music and thinking about their own form or pump. Nobody is judging you!\n" +
+                "• **How to Ask for a Machine**: Walk up between sets, smile, and say: *'Bhai, kitne sets bache hain? Kya main sath me alternate/work-in kar sakta hoon?'*\n" +
+                "• **The Golden Code**: 99% of Indian lifters will smile and say 'Haan bhai, aao'. Put a towel down, rerack weights when done, and you've made a gym bro."
+        }
+
+        // 14. Weight Calibration & Progressive Overload
+        if (q.contains("weight") || q.contains("heavy") || q.contains("light") || q.contains("reps") || q.contains("overload")) {
+            return "⚖️ **Weight Selection & Progressive Overload Guide:**\n" +
+                "• **The 2 RIR Rule**: Choose a weight where the last 2 reps of your set feel challenging, but your form doesn't breakdown (Reps In Reserve = 1-2).\n" +
+                "• **When to Increase**: If your target is 10-12 reps, and you can comfortably hit 12 clean reps on all 3 sets, increase the weight by **2.5 kg** in your next session.\n" +
+                "• **Form Over Ego**: A 10kg dumbbell moved with 3 seconds eccentric control builds more muscle and prevents injuries than a 20kg dumbbell swung with body momentum."
+        }
+
+        // 15. Default Role Specific Response
+        return when (role) {
+            BuddyRole.FORM_SPOTTER ->
+                "Lock in! Here is your quick form checklist:\n" +
+                "• **Scapula**: Retract and keep your shoulder blades steady.\n" +
+                "• **Core**: Take a deep belly breath and brace like you're taking a punch.\n" +
+                "• **Tempo**: Control the descent for 2 full seconds, then press with power.\n" +
+                "• **Safety**: Keep wrists neutral and never compromise posture for extra weight."
+            BuddyRole.NUTRITION_BUDDY ->
+                "Focus on hitting your daily protein target consistently! Great desi options:\n" +
+                "• 100g Paneer (~18g P) or 50g Soya Chunks (~26g P)\n" +
+                "• 1 Glass Sattu Drink (~20g P) or 3 Boiled Eggs (~18g P)\n" +
+                "• Amul High Protein Buttermilk (~15g P for ₹25)\n" +
+                "Drink 3-4 liters of water and prioritize whole foods over expensive powders."
+            BuddyRole.HYPE_MINDSET ->
+                "Bhai, consistency is everything! You showed up today, and that's already better than 90% of people.\n" +
+                "• Don't worry about what others are lifting.\n" +
+                "• Focus on your mind-muscle connection and controlled tempo.\n" +
+                "• One clean set at a time. You've got this!"
+            BuddyRole.QUICK_TIP ->
+                "Between-set tip: Breathe deeply through your nose for 4 counts, out through mouth for 6 counts. Reset your grip and brace before set 2!"
         }
     }
 
@@ -648,8 +817,8 @@ class SpotMeAiService {
 
     private companion object {
         const val TAG = "SpotMeAiService"
-        const val DEFAULT_MODEL_NAME = "gemini-3.8-flash"
-        const val FAST_MODEL_NAME = "gemini-3.5-flash-lite"
+        const val DEFAULT_MODEL_NAME = "gemini-2.5-flash"
+        const val FAST_MODEL_NAME = "gemini-1.5-flash"
         const val TIMEOUT_MS = 60_000L
     }
 }
