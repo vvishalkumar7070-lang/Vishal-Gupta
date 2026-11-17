@@ -33,3 +33,33 @@ val DarkOutline = Color(0xFF2C384C)
 
 val SuccessGreen = Color(0xFF1B9E5A)
 val SuccessGreenSoft = Color(0xFFDFF6E9)
+
+// Kinetic Athletic Color Tokens for Visual Impact
+val CyberLime = Color(0xFFCCFF00)
+val NeonCyan = Color(0xFF00E5FF)
+val NeonEmber = Color(0xFFFF5252)
+val HyperPurple = Color(0xFFA855F7)
+val AmberGold = Color(0xFFFFB800)
+val ObsidianBlack = Color(0xFF080C12)
+val DarkGlassCard = Color(0xFF141D2B)
+val DarkGlassBorder = Color(0xFF26354B)
+val DarkGlassGlow = Color(0xFF1C2738)
+
+// Tri-Macro High-Contrast Energy Gauges
+val ProteinCyan = Color(0xFF00D2FF)
+val CarbsLime = Color(0xFFB8F924)
+val FatAmber = Color(0xFFFFAB00)
+
+// Muscle Group Kinetic Tag Colors
+fun getMuscleAccentColor(muscleGroup: String): Color {
+    val lower = muscleGroup.lowercase()
+    return when {
+        lower.contains("chest") || lower.contains("push") || lower.contains("pec") -> NeonEmber
+        lower.contains("back") || lower.contains("pull") || lower.contains("lat") -> NeonCyan
+        lower.contains("leg") || lower.contains("quad") || lower.contains("glute") || lower.contains("ham") || lower.contains("squat") -> CyberLime
+        lower.contains("shoulder") || lower.contains("delt") || lower.contains("trap") -> HyperPurple
+        lower.contains("arm") || lower.contains("bicep") || lower.contains("tricep") -> AmberGold
+        lower.contains("core") || lower.contains("ab") -> Color(0xFF06B6D4)
+        else -> ElectricLime
+    }
+}
