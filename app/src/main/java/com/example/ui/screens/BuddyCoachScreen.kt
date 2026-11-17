@@ -51,6 +51,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.CyberLime
+import com.example.ui.theme.NeonCyan
+import com.example.ui.theme.DarkGlassCard
+import com.example.ui.theme.DarkGlassBorder
 import com.example.data.ai.BuddyRole
 import com.example.data.model.BuddyMessage
 
@@ -115,25 +122,46 @@ fun BuddyCoachScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Surface(
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
-                        shape = RoundedCornerShape(12.dp)
+                        color = NeonCyan.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.4f))
                     ) {
                         Icon(
                             imageVector = Icons.Filled.SmartToy,
                             contentDescription = "SpotMe Coach",
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            tint = NeonCyan,
                             modifier = Modifier.padding(8.dp)
                         )
                     }
                     Column {
-                        Text(
-                            text = "Ask Your Gym Buddy",
-                            style = MaterialTheme.typography.titleLarge
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "AI Buddy Coach",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Surface(
+                                color = CyberLime.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(50),
+                                border = BorderStroke(1.dp, CyberLime.copy(alpha = 0.5f))
+                            ) {
+                                Text(
+                                    text = "● SPOT ACTIVE",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CyberLime,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                         Text(
                             text = "${selectedRole.label} • ${selectedRole.subtitle}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFF94A3B8)
                         )
                     }
                 }
@@ -388,12 +416,12 @@ private fun ChatBubble(
                 bottomStart = if (isUser) 18.dp else 4.dp,
                 bottomEnd = if (isUser) 4.dp else 18.dp
             ),
-            color = if (isUser) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-            tonalElevation = if (isUser) 0.dp else 1.dp,
+            color = if (isUser) Color(0xFF1E293B) else DarkGlassCard,
+            border = BorderStroke(
+                1.dp,
+                if (isUser) Color(0xFF334155) else NeonCyan.copy(alpha = 0.35f)
+            ),
+            tonalElevation = if (isUser) 2.dp else 0.dp,
             modifier = Modifier.widthIn(max = 520.dp)
         ) {
             Column(
@@ -404,17 +432,26 @@ private fun ChatBubble(
                     Text(
                         text = "Re: $contextTag",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primaryContainer
+                        fontWeight = FontWeight.Bold,
+                        color = CyberLime
                     )
+                } else if (!isUser) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "⚡ SPOTME COACH",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = NeonCyan
+                        )
+                    }
                 }
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isUser) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
+                    color = Color.White
                 )
             }
         }
