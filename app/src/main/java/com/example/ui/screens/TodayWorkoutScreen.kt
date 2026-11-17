@@ -772,6 +772,8 @@ private fun ExerciseCoachCard(
     var expandedCue by remember(exercise.id) { mutableStateOf(true) }
     val allSetsDone = completedSets >= exercise.sets
     val muscleAccent = getMuscleAccentColor(exercise.muscleGroup)
+    var showPlateCalculator by remember { mutableStateOf(false) }
+    var selectedRir by remember(exercise.id) { mutableStateOf(2) }
 
     Card(
         shape = RoundedCornerShape(22.dp),
@@ -895,6 +897,31 @@ private fun ExerciseCoachCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        if (exercise.suggestedWeightKg >= 20.0) {
+                            Surface(
+                                onClick = { showPlateCalculator = true },
+                                shape = RoundedCornerShape(10.dp),
+                                color = AmberGold.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, AmberGold.copy(alpha = 0.45f)),
+                                modifier = Modifier
+                                    .height(40.dp)
+                                    .testTag("open_plates_${exercise.id}")
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(text = "🏷️", style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        text = "Plates",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = AmberGold
+                                    )
+                                }
+                            }
+                        }
                         Surface(
                             onClick = { onAdjustWeight(-2.5) },
                             shape = RoundedCornerShape(10.dp),
@@ -999,6 +1026,82 @@ private fun ExerciseCoachCard(
                             fontWeight = FontWeight.Bold,
                             color = NeonCyan
                         )
+                    }
+                }
+            }
+
+            // Scientific Hypertrophy RIR (Reps In Reserve) Intensity Selector
+            Surface(
+                color = Color.Black.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "HYPERTROPHY RIR INTENSITY",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF94A3B8)
+                        )
+                        Text(
+                            text = when (selectedRir) {
+                                0 -> "0 RIR • True Failure"
+                                1 -> "1 RIR • Extreme Hard"
+                                2 -> "2 RIR • Sweetspot (RP)"
+                                else -> "3+ RIR • Warmup / Submax"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = when (selectedRir) {
+                                0 -> NeonEmber
+                                1 -> AmberGold
+                                2 -> CyberLime
+                                else -> NeonCyan
+                            }
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            Triple(0, "0 RIR", NeonEmber),
+                            Triple(1, "1 RIR", AmberGold),
+                            Triple(2, "2 RIR", CyberLime),
+                            Triple(3, "3 RIR", NeonCyan)
+                        ).forEach { (rirVal, rirLabel, rirColor) ->
+                            val isSelected = selectedRir == rirVal
+                            Surface(
+                                onClick = { selectedRir = rirVal },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) rirColor.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.04f),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (isSelected) rirColor else Color.White.copy(alpha = 0.1f)
+                                ),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(32.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = rirLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Normal,
+                                        color = if (isSelected) rirColor else Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1159,6 +1262,13 @@ private fun ExerciseCoachCard(
             }
         }
     }
+
+    if (showPlateCalculator) {
+        PlateCalculatorDialog(
+            totalWeightKg = exercise.suggestedWeightKg,
+            onDismiss = { showPlateCalculator = false }
+        )
+    }
 }
 
 private fun formatWeight(weight: Double): String {
@@ -1166,6 +1276,283 @@ private fun formatWeight(weight: Double): String {
         weight.toInt().toString()
     } else {
         String.format("%.1f", weight)
+    }
+}
+
+@Composable
+private fun PlateCalculatorDialog(
+    totalWeightKg: Double,
+    onDismiss: () -> Unit
+) {
+    var currentWeight by remember { mutableStateOf(totalWeightKg.coerceAtLeast(20.0)) }
+    val barWeight = 20.0
+    val netPlatesWeight = (currentWeight - barWeight).coerceAtLeast(0.0)
+    val weightPerSide = netPlatesWeight / 2.0
+
+    // Standard Olympic bumper plates: 25kg (Red), 20kg (Blue), 15kg (Yellow), 10kg (Green), 5kg (White), 2.5kg (Dark), 1.25kg (Silver)
+    data class PlateInfo(val weight: Double, val color: Color, val textColor: Color, val heightFraction: Float)
+    val availablePlates = remember {
+        listOf(
+            PlateInfo(25.0, Color(0xFFE53935), Color.White, 1.0f),
+            PlateInfo(20.0, Color(0xFF1E88E5), Color.White, 0.92f),
+            PlateInfo(15.0, Color(0xFFFDD835), Color.Black, 0.84f),
+            PlateInfo(10.0, Color(0xFF43A047), Color.White, 0.76f),
+            PlateInfo(5.0, Color(0xFFEEEEEE), Color.Black, 0.65f),
+            PlateInfo(2.5, Color(0xFF424242), Color.White, 0.52f),
+            PlateInfo(1.25, Color(0xFF9E9E9E), Color.Black, 0.42f)
+        )
+    }
+
+    val sidePlates = remember(weightPerSide) {
+        val result = mutableListOf<PlateInfo>()
+        var rem = weightPerSide
+        for (p in availablePlates) {
+            val count = (rem / p.weight).toInt()
+            repeat(count) {
+                result.add(p)
+            }
+            rem -= count * p.weight
+            rem = ((rem * 100).toInt()) / 100.0
+        }
+        result
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = DarkGlassCard,
+            border = BorderStroke(1.dp, AmberGold.copy(alpha = 0.45f)),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .widthIn(max = 480.dp)
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            color = AmberGold.copy(alpha = 0.18f),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, AmberGold.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "OLYMPIC BAR 20KG",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = AmberGold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        Text(
+                            text = "Plate Math",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White)
+                    }
+                }
+
+                // Total weight & per side readouts
+                Surface(
+                    color = Color.Black.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("TOTAL LOAD", style = MaterialTheme.typography.labelSmall, color = Color(0xFF94A3B8))
+                            Text(
+                                text = "${formatWeight(currentWeight)} kg",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CyberLime
+                            )
+                        }
+                        Box(modifier = Modifier.width(1.dp).height(36.dp).background(Color.White.copy(alpha = 0.15f)))
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("EACH SIDE", style = MaterialTheme.typography.labelSmall, color = Color(0xFF94A3B8))
+                            Text(
+                                text = "${formatWeight(weightPerSide)} kg",
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = AmberGold
+                            )
+                        }
+                    }
+                }
+
+                // Visual Barbell Graphic with colored plates stacked
+                Surface(
+                    color = Color(0xFF090D16),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    modifier = Modifier.fillMaxWidth().height(110.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        // Bar shaft
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(12.dp)
+                                .background(Brush.verticalGradient(listOf(Color(0xFF888888), Color(0xFF444444))))
+                        )
+                        // Collar stopper & Plates
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(10.dp)
+                                    .height(60.dp)
+                                    .background(Color(0xFFCCCCCC), RoundedCornerShape(2.dp))
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            if (sidePlates.isEmpty()) {
+                                Text(
+                                    text = "Empty 20 kg Olympic Barbell",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF64748B),
+                                    modifier = Modifier.padding(start = 16.dp)
+                                )
+                            } else {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    sidePlates.take(8).forEach { p ->
+                                        Surface(
+                                            color = p.color,
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = BorderStroke(1.dp, Color.Black.copy(alpha = 0.4f)),
+                                            modifier = Modifier
+                                                .width(22.dp)
+                                                .height((80 * p.heightFraction).dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = formatWeight(p.weight),
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    color = p.textColor
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Plate breakdown list chips
+                if (sidePlates.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        sidePlates.groupBy { it.weight }.forEach { (weight, list) ->
+                            val plate = list.first()
+                            Surface(
+                                color = plate.color.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, plate.color)
+                            ) {
+                                Text(
+                                    text = "${list.size}× ${formatWeight(weight)}kg",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Weight adjust stepper row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        onClick = { currentWeight = (currentWeight - 5.0).coerceAtLeast(20.0) },
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.White.copy(alpha = 0.08f),
+                        modifier = Modifier.weight(1f).height(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("-5 kg", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                    Surface(
+                        onClick = { currentWeight = (currentWeight - 2.5).coerceAtLeast(20.0) },
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color.White.copy(alpha = 0.08f),
+                        modifier = Modifier.weight(1f).height(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("-2.5 kg", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                    Surface(
+                        onClick = { currentWeight += 2.5 },
+                        shape = RoundedCornerShape(10.dp),
+                        color = CyberLime.copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, CyberLime),
+                        modifier = Modifier.weight(1f).height(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("+2.5 kg", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = CyberLime)
+                        }
+                    }
+                    Surface(
+                        onClick = { currentWeight += 5.0 },
+                        shape = RoundedCornerShape(10.dp),
+                        color = CyberLime.copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, CyberLime),
+                        modifier = Modifier.weight(1f).height(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text("+5 kg", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = CyberLime)
+                        }
+                    }
+                }
+
+                // Done Button
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberGold, contentColor = Color.Black),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Got It • Load The Bar", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }
 
@@ -1228,7 +1615,7 @@ private fun ExerciseDemoDialog(
     onAskBuddy: () -> Unit
 ) {
     var isSlowMo by remember { mutableStateOf(false) }
-    var viewMode by remember { mutableStateOf("kinematics") }
+    var viewMode by remember { mutableStateOf("bio") }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -1260,7 +1647,7 @@ private fun ExerciseDemoDialog(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = "${exercise.muscleGroup.uppercase()} • 3D FORM SPOTTER",
+                                text = "${exercise.muscleGroup.uppercase()} • 60 FPS BIOMECHANICS",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 fontWeight = FontWeight.Bold,
@@ -1287,16 +1674,16 @@ private fun ExerciseDemoDialog(
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         FilterChip(
+                            selected = viewMode == "bio",
+                            onClick = { viewMode = "bio" },
+                            leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp)) },
+                            label = { Text("⚡ 60fps Bio Engine", style = MaterialTheme.typography.labelSmall) }
+                        )
+                        FilterChip(
                             selected = viewMode == "kinematics",
                             onClick = { viewMode = "kinematics" },
                             leadingIcon = { Icon(Icons.Filled.Speed, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                            label = { Text("3D Path", style = MaterialTheme.typography.labelSmall) }
-                        )
-                        FilterChip(
-                            selected = viewMode == "gif",
-                            onClick = { viewMode = "gif" },
-                            leadingIcon = { Icon(Icons.Filled.PlayCircle, contentDescription = null, modifier = Modifier.size(14.dp)) },
-                            label = { Text("GIF Demo", style = MaterialTheme.typography.labelSmall) }
+                            label = { Text("🧬 Vector Path", style = MaterialTheme.typography.labelSmall) }
                         )
                     }
 
@@ -1311,49 +1698,28 @@ private fun ExerciseDemoDialog(
                 // Screen Visual Area
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.background,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    color = Color(0xFF080C14),
+                    border = BorderStroke(1.dp, CyberLime.copy(alpha = 0.35f)),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(210.dp)
+                        .height(235.dp)
                 ) {
-                    if (viewMode == "gif") {
-                        val gifUrl = getExerciseGifUrl(exercise.name)
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            AndroidView(
-                                factory = { ctx ->
-                                    android.webkit.WebView(ctx).apply {
-                                        setBackgroundColor(0)
-                                        settings.loadWithOverviewMode = true
-                                        settings.useWideViewPort = true
-                                        val html = """
-                                            <html>
-                                            <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-                                            <body style="margin:0;padding:0;background:#0E131B;display:flex;align-items:center;justify-content:center;height:100vh;">
-                                                <img src="$gifUrl" style="max-width:100%;max-height:100%;border-radius:14px;object-fit:contain;" />
-                                            </body>
-                                            </html>
-                                        """.trimIndent()
-                                        loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            Surface(
-                                color = Color.Black.copy(alpha = 0.65f),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(8.dp)
-                            ) {
-                                Text(
-                                    text = "GIF Motion",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
+                    if (viewMode == "bio") {
+                        AndroidView(
+                            factory = { ctx ->
+                                android.webkit.WebView(ctx).apply {
+                                    setBackgroundColor(0)
+                                    settings.loadWithOverviewMode = true
+                                    settings.useWideViewPort = true
+                                    settings.javaScriptEnabled = true
+                                    loadDataWithBaseURL(null, getBiomechanicalMotionHtml(exercise.name, isSlowMo), "text/html", "utf-8", null)
+                                }
+                            },
+                            update = { webView ->
+                                webView.loadDataWithBaseURL(null, getBiomechanicalMotionHtml(exercise.name, isSlowMo), "text/html", "utf-8", null)
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     } else {
                         ExerciseKinematicCanvas(
                             exerciseName = exercise.name,
@@ -1484,14 +1850,14 @@ private fun ExerciseKinematicCanvas(
     )
 
     val (phaseText, phaseColor) = when {
-        progress < 0.20f -> "1. TOP LOCKOUT • BRACE CORE" to Color(0xFF00E5FF)
-        progress < 0.60f -> "2. ECCENTRIC DESCENT (2-3s)" to Color(0xFFD7F957)
-        progress < 0.75f -> "3. DEEP STRETCH PAUSE (1s)" to Color(0xFFFF9800)
+        progress < 0.18f -> "1. TOP LOCKOUT • BRACE CORE" to Color(0xFF00E5FF)
+        progress < 0.60f -> "2. ECCENTRIC DESCENT (2.4s)" to Color(0xFFD7F957)
+        progress < 0.75f -> "3. DEEP STRETCH PAUSE (1.0s)" to Color(0xFFFF9800)
         else -> "4. POWER CONCENTRIC DRIVE" to Color(0xFF10B981)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Canvas(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize().padding(16.dp)) {
             val w = size.width
             val h = size.height
 
@@ -1499,7 +1865,7 @@ private fun ExerciseKinematicCanvas(
             val isPull = exerciseName.contains("pull", ignoreCase = true) || exerciseName.contains("row", ignoreCase = true)
 
             val cycle = if (progress < 0.60f) {
-                ((progress - 0.20f) / 0.40f).coerceIn(0f, 1f)
+                ((progress - 0.18f) / 0.42f).coerceIn(0f, 1f)
             } else if (progress < 0.75f) {
                 1f
             } else {
@@ -1508,39 +1874,77 @@ private fun ExerciseKinematicCanvas(
 
             // Grid lines
             drawLine(
-                color = Color.White.copy(alpha = 0.08f),
+                color = Color.White.copy(alpha = 0.05f),
                 start = Offset(0f, h * 0.5f),
                 end = Offset(w, h * 0.5f),
                 strokeWidth = 1.dp.toPx()
             )
             drawLine(
-                color = Color.White.copy(alpha = 0.08f),
+                color = Color.White.copy(alpha = 0.05f),
                 start = Offset(w * 0.5f, 0f),
                 end = Offset(w * 0.5f, h),
                 strokeWidth = 1.dp.toPx()
             )
 
-            val startY = if (isPull) h * 0.2f else h * 0.3f
-            val endY = if (isPull) h * 0.75f else h * 0.78f
+            // Bench Incline Guide (for presses)
+            if (!isLower && !isPull) {
+                drawLine(
+                    color = Color(0xFF1E293B),
+                    start = Offset(w * 0.25f, h * 0.75f),
+                    end = Offset(w * 0.75f, h * 0.45f),
+                    strokeWidth = 6.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+
+            val startY = if (isPull) h * 0.18f else h * 0.28f
+            val endY = if (isPull) h * 0.72f else h * 0.72f
             val curY = startY + (endY - startY) * cycle
 
             // Motion Trajectory Guide Path
             drawLine(
-                color = Color(0xFF2E6BFF).copy(alpha = 0.45f),
+                color = Color(0xFF00E5FF).copy(alpha = 0.35f),
                 start = Offset(w * 0.5f, startY),
                 end = Offset(w * 0.5f, endY),
+                strokeWidth = 3.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+
+            // Dynamic Joint Humerus & Forearm Lines
+            val shoulderOffset = Offset(w * 0.42f, h * 0.55f)
+            val elbowOffset = Offset(w * 0.38f + (w * 0.06f * cycle), curY + 20.dp.toPx() * (1f - cycle))
+            val loadOffset = Offset(w * 0.5f, curY)
+
+            drawLine(
+                color = Color(0xFF94A3B8).copy(alpha = 0.6f),
+                start = shoulderOffset,
+                end = elbowOffset,
+                strokeWidth = 4.dp.toPx(),
+                cap = StrokeCap.Round
+            )
+            drawLine(
+                color = Color(0xFFCBD5E1),
+                start = elbowOffset,
+                end = loadOffset,
                 strokeWidth = 4.dp.toPx(),
                 cap = StrokeCap.Round
             )
 
-            // Dumbbell or Barbell Width
-            val barbellWidth = w * 0.55f
+            // Muscle Heatmap Glow
+            val glowAlpha = (0.25f + 0.65f * cycle).coerceIn(0f, 1f)
+            drawCircle(
+                color = phaseColor.copy(alpha = glowAlpha * 0.5f),
+                radius = 24.dp.toPx(),
+                center = elbowOffset
+            )
+
+            // Barbell / Dumbbell
+            val barbellWidth = w * 0.52f
             val leftX = (w - barbellWidth) / 2
             val rightX = (w + barbellWidth) / 2
 
-            // Barbell rod
             drawLine(
-                color = Color.White.copy(alpha = 0.75f),
+                color = Color.White.copy(alpha = 0.85f),
                 start = Offset(leftX, curY),
                 end = Offset(rightX, curY),
                 strokeWidth = 3.dp.toPx(),
@@ -1549,31 +1953,31 @@ private fun ExerciseKinematicCanvas(
 
             // Weight Plates
             drawCircle(
-                color = Color(0xFFD7F957),
-                radius = 12.dp.toPx(),
+                color = CyberLime,
+                radius = 11.dp.toPx(),
                 center = Offset(leftX, curY)
             )
             drawCircle(
-                color = Color(0xFFD7F957),
-                radius = 12.dp.toPx(),
+                color = CyberLime,
+                radius = 11.dp.toPx(),
                 center = Offset(rightX, curY)
             )
 
             // Center glow core
             drawCircle(
-                color = Color(0xFF00E5FF),
+                color = phaseColor,
                 radius = 5.dp.toPx(),
-                center = Offset(w * 0.5f, curY)
+                center = loadOffset
             )
         }
 
         // Phase Overlay Pill at bottom
         Surface(
-            color = Color.Black.copy(alpha = 0.75f),
+            color = Color.Black.copy(alpha = 0.8f),
             shape = RoundedCornerShape(50),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 10.dp)
+                .padding(bottom = 8.dp)
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1596,22 +2000,225 @@ private fun ExerciseKinematicCanvas(
     }
 }
 
-private fun getExerciseGifUrl(exerciseName: String): String {
+private fun getBiomechanicalMotionHtml(exerciseName: String, isSlowMo: Boolean): String {
     val name = exerciseName.lowercase()
-    return when {
-        name.contains("incline") && name.contains("bench") ->
-            "https://raw.githubusercontent.com/vvishalkumar7070-lang/Vishal-Gupta/main/gifs/incline_db_press.gif"
-        name.contains("lateral") ->
-            "https://raw.githubusercontent.com/vvishalkumar7070-lang/Vishal-Gupta/main/gifs/lateral_raise.gif"
-        name.contains("tricep") || name.contains("overhead") ->
-            "https://raw.githubusercontent.com/vvishalkumar7070-lang/Vishal-Gupta/main/gifs/triceps_extension.gif"
-        name.contains("lat pulldown") || name.contains("pulldown") ->
-            "https://raw.githubusercontent.com/vvishalkumar7070-lang/Vishal-Gupta/main/gifs/lat_pulldown.gif"
-        name.contains("squat") ->
-            "https://raw.githubusercontent.com/vvishalkumar7070-lang/Vishal-Gupta/main/gifs/goblet_squat.gif"
-        else ->
-            "https://raw.githubusercontent.com/vvishalkumar7070-lang/Vishal-Gupta/main/gifs/general_lift.gif"
+    val isPress = name.contains("press") || name.contains("bench") || name.contains("push")
+    val isLateral = name.contains("lateral") || name.contains("raise")
+    val isTricep = name.contains("tricep") || name.contains("overhead") || name.contains("extension")
+    val isPull = name.contains("pulldown") || name.contains("pull") || name.contains("row") || name.contains("chin")
+    val isSquat = name.contains("squat") || name.contains("lunge") || name.contains("leg")
+
+    val duration = if (isSlowMo) "6.4s" else "3.6s"
+    val muscleName = when {
+        isPress -> "Clavicular Pectoralis Major & Front Delt"
+        isLateral -> "Lateral Deltoid (Scapular Plane)"
+        isTricep -> "Long Head Triceps Brachii"
+        isPull -> "Latissimus Dorsi & Teres Major"
+        isSquat -> "Quadriceps Femoris & Gluteus"
+        else -> "Target Muscle Group"
     }
+
+    val primaryHex = when {
+        isPress -> "#00E5FF"
+        isLateral -> "#D7F957"
+        isTricep -> "#FF7043"
+        isPull -> "#38BDF8"
+        isSquat -> "#A78BFA"
+        else -> "#D7F957"
+    }
+
+    val angleReadout = when {
+        isPress -> "30° Bench • 45° Elbow Tuck"
+        isLateral -> "10° Torso • 30° Scapular Plane"
+        isTricep -> "180° Upper Arm • 90° Flexion"
+        isPull -> "120° Grip • Clavicle Drive"
+        isSquat -> "90° Parallel • Hips Back"
+        else -> "Optimal Joint Articulation"
+    }
+
+    return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body {
+                    background: #080C14;
+                    color: #F8FAFC;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: space-between;
+                    height: 100vh;
+                    overflow: hidden;
+                    padding: 8px 10px;
+                }
+                .hud-header {
+                    width: 100%;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 10px;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                }
+                .badge-muscle {
+                    background: rgba(0, 229, 255, 0.15);
+                    border: 1px solid $primaryHex;
+                    color: $primaryHex;
+                    padding: 2px 8px;
+                    border-radius: 6px;
+                    text-transform: uppercase;
+                }
+                .badge-angle {
+                    color: #94A3B8;
+                    font-size: 10px;
+                }
+                .canvas-wrap {
+                    flex: 1;
+                    width: 100%;
+                    max-height: 155px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    position: relative;
+                }
+                svg {
+                    width: 100%;
+                    height: 100%;
+                }
+                /* Rep Motion Keyframe */
+                @keyframes repPacer {
+                    0% { transform: translateY(0px); }
+                    15% { transform: translateY(0px); }
+                    55% { transform: translateY(38px); }
+                    70% { transform: translateY(38px); }
+                    92% { transform: translateY(0px); }
+                    100% { transform: translateY(0px); }
+                }
+                @keyframes musclePulsing {
+                    0% { opacity: 0.35; filter: drop-shadow(0 0 2px $primaryHex); }
+                    50% { opacity: 0.95; filter: drop-shadow(0 0 8px $primaryHex); }
+                    75% { opacity: 1.0; filter: drop-shadow(0 0 12px $primaryHex); }
+                    100% { opacity: 0.35; filter: drop-shadow(0 0 2px $primaryHex); }
+                }
+                @keyframes pacerBar {
+                    0% { width: 0%; }
+                    100% { width: 100%; }
+                }
+                .anim-load {
+                    animation: repPacer $duration cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+                }
+                .anim-muscle {
+                    animation: musclePulsing $duration ease-in-out infinite;
+                }
+                .pacer-track {
+                    width: 100%;
+                    background: rgba(255, 255, 255, 0.08);
+                    height: 4px;
+                    border-radius: 2px;
+                    overflow: hidden;
+                    margin-top: 4px;
+                }
+                .pacer-fill {
+                    height: 100%;
+                    background: linear-gradient(90deg, #00E5FF, #D7F957, #FF7043, #10B981);
+                    animation: pacerBar $duration linear infinite;
+                }
+                .phase-ticker {
+                    width: 100%;
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 9px;
+                    color: #64748B;
+                    font-weight: 600;
+                    margin-top: 2px;
+                }
+                .active-phase {
+                    color: #D7F957;
+                    font-weight: 800;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="hud-header">
+                <span class="badge-muscle">$muscleName</span>
+                <span class="badge-angle">$angleReadout</span>
+            </div>
+
+            <div class="canvas-wrap">
+                <svg viewBox="0 0 320 150">
+                    <defs>
+                        <radialGradient id="neonCore" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#FFFFFF" />
+                            <stop offset="60%" stop-color="$primaryHex" />
+                            <stop offset="100%" stop-color="transparent" />
+                        </radialGradient>
+                        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+
+                    <!-- Technical Grid -->
+                    <line x1="20" y1="75" x2="300" y2="75" stroke="rgba(255,255,255,0.04)" stroke-dasharray="3,3" />
+                    <line x1="160" y1="10" x2="160" y2="140" stroke="rgba(255,255,255,0.04)" stroke-dasharray="3,3" />
+
+                    <!-- Bench & Skeletal Platform -->
+                    <line x1="70" y1="125" x2="250" y2="65" stroke="#1E293B" stroke-width="8" stroke-linecap="round" />
+                    <line x1="150" y1="98" x2="150" y2="135" stroke="#0F172A" stroke-width="6" />
+
+                    <!-- Mannequin Torso & Head -->
+                    <line x1="95" y1="117" x2="215" y2="77" stroke="#334155" stroke-width="12" stroke-linecap="round" />
+                    <circle cx="232" cy="71" r="12" fill="#1E293B" stroke="#475569" stroke-width="2" />
+
+                    <!-- Active Muscle Belly Heatmap -->
+                    <polygon points="175,85 140,97 155,108 190,92" fill="$primaryHex" class="anim-muscle" />
+
+                    <!-- Shoulder Pivot -->
+                    <circle cx="180" cy="88" r="5" fill="#00E5FF" />
+
+                    <!-- Articulated Moving Arm & Dumbbell Load -->
+                    <g class="anim-load">
+                        <!-- Upper Arm -->
+                        <line x1="180" y1="88" x2="155" y2="52" stroke="#94A3B8" stroke-width="5" stroke-linecap="round" />
+                        <!-- Forearm -->
+                        <line x1="155" y1="52" x2="165" y2="18" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round" />
+                        <!-- Elbow Joint Badge -->
+                        <circle cx="155" cy="52" r="4" fill="#D7F957" />
+
+                        <!-- Dumbbell Shaft -->
+                        <line x1="140" y1="18" x2="190" y2="18" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" />
+                        <!-- Dumbbell Plates -->
+                        <rect x="135" y="8" width="6" height="20" rx="2" fill="#D7F957" filter="url(#glow)" />
+                        <rect x="189" y="8" width="6" height="20" rx="2" fill="#D7F957" filter="url(#glow)" />
+                        <!-- Core Center Glow -->
+                        <circle cx="165" cy="18" r="4" fill="url(#neonCore)" />
+                    </g>
+
+                    <!-- Protractor Joint Guide -->
+                    <path d="M 170 88 A 20 20 0 0 0 160 70" fill="none" stroke="$primaryHex" stroke-width="1.5" stroke-dasharray="2,2" />
+                    <text x="185" y="65" fill="$primaryHex" font-size="8" font-weight="bold">45° TUCK</text>
+                </svg>
+            </div>
+
+            <!-- Dynamic 4-Phase Rep Pacer -->
+            <div style="width: 100%;">
+                <div class="pacer-track">
+                    <div class="pacer-fill"></div>
+                </div>
+                <div class="phase-ticker">
+                    <span>1. Lockout</span>
+                    <span class="active-phase">2. Eccentric (2.4s)</span>
+                    <span>3. Stretch</span>
+                    <span>4. Drive</span>
+                </div>
+            </div>
+        </body>
+        </html>
+    """.trimIndent()
 }
 
 private fun getExerciseSetupDetails(exerciseName: String, setupCue: String): List<String> {
