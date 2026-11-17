@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.example.ui.screens
 
 import android.media.AudioManager
@@ -1204,7 +1206,6 @@ private fun ExerciseCoachCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-
                 if (exercise.alternativeExercise.isNotBlank()) {
                     OutlinedButton(
                         onClick = onQuickSwap,
@@ -1279,6 +1280,7 @@ private fun formatWeight(weight: Double): String {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlateCalculatorDialog(
     totalWeightKg: Double,
