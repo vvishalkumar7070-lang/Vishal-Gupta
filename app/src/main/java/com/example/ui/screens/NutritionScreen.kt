@@ -58,6 +58,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
+import com.example.ui.theme.CyberLime
+import com.example.ui.theme.NeonCyan
+import com.example.ui.theme.ProteinCyan
+import com.example.ui.theme.CarbsLime
+import com.example.ui.theme.FatAmber
+import com.example.ui.theme.DarkGlassCard
+import com.example.ui.theme.DarkGlassBorder
 import com.example.R
 import com.example.data.model.MealLog
 import com.example.data.model.MealSuggestion
@@ -129,9 +138,7 @@ fun NutritionScreen(
     var mealDescription by remember { mutableStateOf("") }
     var showCustomDialog by remember { mutableStateOf(false) }
     var selectedFoodCategory by remember { mutableStateOf("all") }
-    
-var waterGlasses by remember { mutableStateOf(5) }
-
+    var waterGlasses by remember { mutableStateOf(5) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -230,70 +237,117 @@ var waterGlasses by remember { mutableStateOf(5) }
             // Interactive Hydration Tracker
             item {
                 Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkGlassCard),
+                    border = BorderStroke(1.dp, ProteinCyan.copy(alpha = 0.35f))
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                shape = RoundedCornerShape(12.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.WaterDrop,
-                                    contentDescription = "Hydration",
-                                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                            }
-                            Column {
-                                Text(
-                                    text = "Hydration: $waterGlasses / 8 glasses",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = "${waterGlasses * 250} ml today",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Surface(
-                                onClick = { waterGlasses = (waterGlasses - 1).coerceAtLeast(0); onAdjustWater(-1) },
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .testTag("water_minus_button")
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Filled.Remove, contentDescription = "Remove water glass")
+                                Surface(
+                                    color = ProteinCyan.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.WaterDrop,
+                                        contentDescription = "Hydration",
+                                        tint = ProteinCyan,
+                                        modifier = Modifier.padding(8.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "DAILY HYDRATION",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ProteinCyan
+                                    )
+                                    Text(
+                                        text = "$waterGlasses / 8 glasses (${waterGlasses * 250} ml)",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
                                 }
                             }
-                            Surface(
-                                onClick = { waterGlasses = (waterGlasses + 1).coerceAtMost(16); onAdjustWater(1) },
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .testTag("water_plus_button")
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Filled.Add,
-                                        contentDescription = "Add water glass",
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(
+                                    onClick = {
+                                        waterGlasses = (waterGlasses - 1).coerceAtLeast(0)
+                                        onAdjustWater(-1)
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color.White.copy(alpha = 0.08f),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .testTag("water_minus_button")
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Filled.Remove, contentDescription = "Remove water glass", tint = Color.White)
+                                    }
+                                }
+                                Surface(
+                                    onClick = {
+                                        waterGlasses = (waterGlasses + 1).coerceAtMost(16)
+                                        onAdjustWater(1)
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = ProteinCyan,
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .testTag("water_plus_button")
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            Icons.Filled.Add,
+                                            contentDescription = "Add water glass",
+                                            tint = Color.Black
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 8-Glass Visual Matrix
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            (1..8).forEach { glassIdx ->
+                                val filled = glassIdx <= waterGlasses
+                                Surface(
+                                    onClick = {
+                                        val delta = glassIdx - waterGlasses
+                                        waterGlasses = glassIdx
+                                        onAdjustWater(delta)
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (filled) ProteinCyan.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.05f),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (filled) ProteinCyan else Color.White.copy(alpha = 0.15f)
+                                    ),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Filled.WaterDrop,
+                                            contentDescription = "Glass $glassIdx",
+                                            tint = if (filled) ProteinCyan else Color.White.copy(alpha = 0.2f),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -393,7 +447,7 @@ var waterGlasses by remember { mutableStateOf(5) }
                                 Text("Suggest Meal For My Macros")
                             }
                         }
-
+                        
                         val suggestion = session.mealSuggestion
                         if (suggestion != null) {
                             AiMealSuggestionCard(
@@ -482,7 +536,8 @@ var waterGlasses by remember { mutableStateOf(5) }
                                 onAddMeal(qm.slot, qm.name, qm.calories, qm.proteinG, qm.carbsG, qm.fatG, false)
                             },
                             shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.surface,
+                            color = DarkGlassCard,
+                            border = BorderStroke(1.dp, DarkGlassBorder),
                             tonalElevation = 2.dp,
                             modifier = Modifier.testTag("quick_meal_$index")
                         ) {
@@ -490,7 +545,7 @@ var waterGlasses by remember { mutableStateOf(5) }
                                 modifier = Modifier
                                     .padding(horizontal = 14.dp, vertical = 10.dp)
                                     .widthIn(max = 280.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -500,7 +555,8 @@ var waterGlasses by remember { mutableStateOf(5) }
                                     Text(
                                         text = "+ ${qm.name}",
                                         style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
                                     )
                                 }
                                 Row(
@@ -508,13 +564,13 @@ var waterGlasses by remember { mutableStateOf(5) }
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        color = ProteinCyan,
                                         shape = RoundedCornerShape(6.dp)
                                     ) {
                                         Text(
                                             text = "${qm.proteinG}g Protein",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            color = Color.Black,
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
@@ -522,17 +578,19 @@ var waterGlasses by remember { mutableStateOf(5) }
                                     Text(
                                         text = "${qm.calories} kcal • ~₹${qm.approxPriceRs}",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFFCBD5E1)
                                     )
                                 }
                                 Surface(
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    color = Color.White.copy(alpha = 0.08f),
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Text(
                                         text = qm.badge,
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.tertiary,
+                                        color = CyberLime,
+                                        fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
@@ -617,7 +675,7 @@ var waterGlasses by remember { mutableStateOf(5) }
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                val slotLabel = meal.mealSlot.replace('_', ' ').uppercase()                                
+                                val slotLabel = meal.mealSlot.replace('_', ' ').uppercase()
                                 Text(
                                     text = "$slotLabel • ${meal.calories} kcal • ${meal.proteinG}g P • ${meal.carbsG}g C • ${meal.fatG}g F",
                                     style = MaterialTheme.typography.labelSmall,
@@ -666,9 +724,15 @@ private fun MacroBarBox(
         targetValue = (current.toFloat() / target.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f),
         label = "macro_bar_$label"
     )
+    val accentColor = when (label.lowercase()) {
+        "protein" -> ProteinCyan
+        "carbs" -> CarbsLime
+        else -> FatAmber
+    }
     Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        color = DarkGlassCard,
         shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.35f)),
         modifier = modifier
     ) {
         Column(
@@ -676,21 +740,29 @@ private fun MacroBarBox(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = label,
+                text = label.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Bold,
+                color = accentColor
             )
             Text(
                 text = "${current}/${target}g",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.White
             )
             LinearProgressIndicator(
                 progress = { barProgress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(5.dp)
+                    .height(5.dp),
+                color = accentColor,
+                trackColor = Color.White.copy(alpha = 0.1f)
+            )
+            Text(
+                text = "${(target - current).coerceAtLeast(0)}g left",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFF94A3B8)
             )
         }
     }
