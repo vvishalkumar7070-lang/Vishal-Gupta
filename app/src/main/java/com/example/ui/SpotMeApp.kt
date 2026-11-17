@@ -94,17 +94,28 @@ private val SpotMeTabs = listOf(
 
 @Composable
 fun SpotMeRoot() {
+    val context = LocalContext.current
     val auth = Firebase.auth
     val currentUser by auth.authStateFlow().collectAsStateWithLifecycle(initialValue = auth.currentUser)
-    val user = currentUser
+    val prefs = remember(context) { context.getSharedPreferences("spotme_auth", android.content.Context.MODE_PRIVATE) }
+    var localSessionUid by remember { mutableStateOf(prefs.getString("local_user_uid", null)) }
 
-    if (user == null) {
-        AuthScreen(onAuthSuccess = { /* AuthStateFlow automatically transitions */ })
+    val effectiveUserId = currentUser?.uid ?: localSessionUid
+    val effectiveDisplayName = currentUser?.displayName ?: prefs.getString("saved_display_name", "Athlete") ?: "Athlete"
+
+    if (effectiveUserId == null) {
+        AuthScreen(onAuthSuccess = {
+            localSessionUid = prefs.getString("local_user_uid", null)
+        })
     } else {
-        androidx.compose.runtime.key(user.uid) {
+        androidx.compose.runtime.key(effectiveUserId) {
             AuthenticatedSpotMeApp(
-                currentUserId = user.uid,
-                defaultDisplayName = user.displayName ?: "Athlete"
+                currentUserId = effectiveUserId,
+                defaultDisplayName = effectiveDisplayName,
+                onSignOutComplete = {
+                    prefs.edit().remove("local_user_uid").apply()
+                    localSessionUid = null
+                }
             )
         }
     }
@@ -113,7 +124,8 @@ fun SpotMeRoot() {
 @Composable
 private fun AuthenticatedSpotMeApp(
     currentUserId: String,
-    defaultDisplayName: String
+    defaultDisplayName: String,
+    onSignOutComplete: () -> Unit = {}
 ) {
     val viewModel: SpotMeViewModel = viewModel(
         key = currentUserId,
@@ -282,7 +294,10 @@ private fun AuthenticatedSpotMeApp(
                                         session = session,
                                         onSelectDay = viewModel::selectDay,
                                         onToggleSet = viewModel::toggleSetComplete,
+                                        onAdjustWeight = viewModel::adjustExerciseWeight,
                                         onStartTimer = viewModel::startRestTimer,
+                                        onToggleTimerPause = viewModel::toggleTimerPause,
+                                        onToggleTimerSound = viewModel::toggleTimerSound,
                                         onStopTimer = viewModel::stopRestTimer,
                                         onQuickSwap = viewModel::swapExerciseQuick,
                                         onAiSwap = { day, ex ->
@@ -306,8 +321,12 @@ private fun AuthenticatedSpotMeApp(
                                         todayDateKey = viewModel.todayDateKey,
                                         mealLogs = mealLogs,
                                         session = session,
+                                        onAdjustWater = viewModel::adjustWaterGlasses,
                                         onRequestAiMeal = { remCal, remPro, slot ->
                                             viewModel.requestMealSuggestion(profile, remCal, remPro, slot)
+                                        },
+                                        onEstimateMeal = { desc, slot ->
+                                            viewModel.estimateMealFromDescription(profile, desc, slot)
                                         },
                                         onDismissSuggestion = viewModel::dismissMealSuggestion,
                                         onAddMeal = viewModel::addMeal,
@@ -316,14 +335,37 @@ private fun AuthenticatedSpotMeApp(
                                 }
 
                                 composable(SpotMeRoutes.BUDDY) {
+                                    val activeDay = workoutDays.find { it.dayNumber == session.selectedDayNumber }
+                                        ?: workoutDays.firstOrNull()
+                                    val todayMeals = mealLogs.filter { it.dateKey == viewModel.todayDateKey }
+                                    val calDone = todayMeals.sumOf { it.calories }
+                                    val proDone = todayMeals.sumOf { it.proteinG }
+                                    val remCal = (profile.dailyCalorieTarget - calDone).coerceAtLeast(0)
+                                    val remPro = (profile.dailyProteinTargetG - proDone).coerceAtLeast(0)
+                                    val liveSummary = buildString {
+                                        if (activeDay != null) {
+                                            append("Today's workout: ${activeDay.title} (${activeDay.focusArea}). ")
+                                        }
+                                        append("Remaining daily macros: ~$remCal kcal, ~${remPro}g protein.")
+                                    }
+
                                     BuddyCoachScreen(
                                         messages = buddyMessages,
                                         streamingReply = session.streamingCoachReply,
                                         isAsking = session.isAskingBuddy,
+                                        selectedRole = session.selectedBuddyRole,
                                         activeContextTag = buddyContextTag,
+                                        liveSummary = liveSummary,
+                                        onSelectRole = viewModel::selectBuddyRole,
                                         onClearContextTag = { buddyContextTag = "" },
                                         onSendQuestion = { q, tag ->
-                                            viewModel.askBuddy(profile, q, tag)
+                                            viewModel.askBuddy(
+                                                profile = profile,
+                                                question = q,
+                                                contextTag = tag,
+                                                history = buddyMessages,
+                                                workoutContextSummary = liveSummary
+                                            )
                                         },
                                         onClearChat = viewModel::clearBuddyHistory
                                     )
@@ -335,6 +377,9 @@ private fun AuthenticatedSpotMeApp(
                                         workoutDays = workoutDays,
                                         workoutLogs = workoutLogs,
                                         onEditPlan = { isEditingPlan = true },
+                                        onUpdateMacroTargets = { cal, pro, carbs, fat ->
+                                            viewModel.updateMacroTargets(profile, cal, pro, carbs, fat)
+                                        },
                                         onSelectDayToTrain = { dayNum ->
                                             viewModel.selectDay(dayNum)
                                             navController.navigate(SpotMeRoutes.TODAY) {
@@ -346,7 +391,8 @@ private fun AuthenticatedSpotMeApp(
                                         onSignOut = {
                                             signOutUser(
                                                 credentialManager = credentialManager,
-                                                scope = scope
+                                                scope = scope,
+                                                onSignOutComplete = onSignOutComplete
                                             )
                                         }
                                     )
