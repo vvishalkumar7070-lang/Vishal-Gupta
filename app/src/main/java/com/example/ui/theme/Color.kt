@@ -34,7 +34,7 @@ val DarkOutline = Color(0xFF2C384C)
 val SuccessGreen = Color(0xFF1B9E5A)
 val SuccessGreenSoft = Color(0xFFDFF6E9)
 
-// Kinetic Athletic Color Tokens for Visual Impact
+// Kinetic Athletic & Home Workout Color Tokens for Visual Impact
 val CyberLime = Color(0xFFCCFF00)
 val NeonCyan = Color(0xFF00E5FF)
 val NeonEmber = Color(0xFFFF5252)
@@ -44,6 +44,17 @@ val ObsidianBlack = Color(0xFF080C12)
 val DarkGlassCard = Color(0xFF141D2B)
 val DarkGlassBorder = Color(0xFF26354B)
 val DarkGlassGlow = Color(0xFF1C2738)
+
+// Slick Home Workout Design System (Restrained Monochrome + Electric Volt)
+val HomeWorkoutBg = Color(0xFF0D0E12)
+val HomeWorkoutCard = Color(0xFF151821)
+val HomeWorkoutCardBorder = Color(0xFF232838)
+val HomeWorkoutCardSelected = Color(0xFF1D2436)
+val HomeWorkoutVolt = Color(0xFFD4FF00)
+val HomeWorkoutCyan = Color(0xFF00E5FF)
+val HomeWorkoutTextPrimary = Color(0xFFFFFFFF)
+val HomeWorkoutTextSecondary = Color(0xFF8E95A5)
+val HomeWorkoutTextMuted = Color(0xFF555D70)
 
 // Tri-Macro High-Contrast Energy Gauges
 val ProteinCyan = Color(0xFF00D2FF)
