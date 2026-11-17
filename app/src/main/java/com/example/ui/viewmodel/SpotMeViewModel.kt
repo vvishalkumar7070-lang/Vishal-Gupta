@@ -3,6 +3,7 @@ package com.example.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.ai.BuddyRole
 import com.example.data.ai.SpotMeAiService
 import com.example.data.model.BuddyMessage
 import com.example.data.model.ExercisePrescription
@@ -41,10 +42,15 @@ data class SessionUiState(
     val restTimerRemainingSec: Int = 0,
     val restTimerTotalSec: Int = 0,
     val isTimerRunning: Boolean = false,
+    val isTimerPaused: Boolean = false,
+    val timerSoundEnabled: Boolean = true,
+    val timerCompletedCount: Int = 0,
     val isGeneratingPlan: Boolean = false,
     val isSwappingExerciseId: String? = null,
     val isGeneratingMeal: Boolean = false,
     val mealSuggestion: MealSuggestion? = null,
+    val waterGlassesToday: Int = 0,
+    val selectedBuddyRole: BuddyRole = BuddyRole.FORM_SPOTTER,
     val streamingCoachReply: String? = null,
     val isAskingBuddy: Boolean = false,
     val bannerMessage: String? = null,
@@ -134,6 +140,16 @@ class SpotMeViewModel(
         _session.update { it.copy(selectedDayNumber = dayNumber) }
     }
 
+    fun selectBuddyRole(role: BuddyRole) {
+        _session.update { it.copy(selectedBuddyRole = role) }
+    }
+
+    fun adjustWaterGlasses(delta: Int) {
+        _session.update {
+            it.copy(waterGlassesToday = (it.waterGlassesToday + delta).coerceIn(0, 16))
+        }
+    }
+
     fun clearMessages() {
         _session.update { it.copy(bannerMessage = null, errorMessage = null) }
     }
@@ -193,6 +209,32 @@ class SpotMeViewModel(
         }
     }
 
+    fun updateMacroTargets(
+        profile: UserProfile,
+        calories: Int,
+        proteinG: Int,
+        carbsG: Int,
+        fatG: Int
+    ) {
+        viewModelScope.launch {
+            val updated = profile.copy(
+                dailyCalorieTarget = calories.coerceIn(1200, 5000),
+                dailyProteinTargetG = proteinG.coerceIn(40, 350),
+                dailyCarbsTargetG = carbsG.coerceIn(40, 700),
+                dailyFatTargetG = fatG.coerceIn(20, 220)
+            )
+            repository.saveProfile(updated)
+                .onSuccess {
+                    _session.update { it.copy(bannerMessage = "Daily macro targets updated!") }
+                }
+                .onFailure { err ->
+                    _session.update {
+                        it.copy(errorMessage = err.localizedMessage ?: "Could not save targets.")
+                    }
+                }
+        }
+    }
+
     fun toggleSetComplete(exercise: ExercisePrescription) {
         val current = _session.value.completedSetsByExerciseId[exercise.id] ?: 0
         val next = if (current >= exercise.sets) 0 else current + 1
@@ -206,25 +248,66 @@ class SpotMeViewModel(
         }
     }
 
+    fun adjustExerciseWeight(
+        day: WorkoutDay,
+        exercise: ExercisePrescription,
+        deltaKg: Double
+    ) {
+        viewModelScope.launch {
+            val updatedWeight = (exercise.suggestedWeightKg + deltaKg).coerceIn(0.0, 250.0)
+            val updatedExercise = exercise.copy(suggestedWeightKg = updatedWeight)
+            val updatedList = day.exercises.map { if (it.id == exercise.id) updatedExercise else it }
+            repository.updateWorkoutDayExercises(day, updatedList)
+                .onFailure { err ->
+                    _session.update {
+                        it.copy(errorMessage = err.localizedMessage ?: "Could not save weight")
+                    }
+                }
+        }
+    }
+
     fun startRestTimer(seconds: Int) {
         timerJob?.cancel()
-        val duration = seconds.coerceIn(15, 240)
+        val duration = seconds.coerceIn(5, 300)
         _session.update {
             it.copy(
                 restTimerRemainingSec = duration,
                 restTimerTotalSec = duration,
-                isTimerRunning = true
+                isTimerRunning = true,
+                isTimerPaused = false
             )
         }
+        launchTimerCountdown()
+    }
+
+    fun toggleTimerPause() {
+        val current = _session.value
+        if (current.restTimerRemainingSec <= 0) return
+        if (current.isTimerPaused) {
+            _session.update { it.copy(isTimerPaused = false, isTimerRunning = true) }
+            launchTimerCountdown()
+        } else {
+            timerJob?.cancel()
+            _session.update { it.copy(isTimerPaused = true, isTimerRunning = false) }
+        }
+    }
+
+    fun toggleTimerSound() {
+        _session.update { it.copy(timerSoundEnabled = !it.timerSoundEnabled) }
+    }
+
+    private fun launchTimerCountdown() {
+        timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            var remaining = duration
-            while (remaining > 0) {
+            while (_session.value.restTimerRemainingSec > 0) {
                 delay(1000L)
-                remaining -= 1
+                val next = (_session.value.restTimerRemainingSec - 1).coerceAtLeast(0)
                 _session.update {
                     it.copy(
-                        restTimerRemainingSec = remaining,
-                        isTimerRunning = remaining > 0
+                        restTimerRemainingSec = next,
+                        isTimerRunning = next > 0,
+                        isTimerPaused = false,
+                        timerCompletedCount = if (next == 0) it.timerCompletedCount + 1 else it.timerCompletedCount
                     )
                 }
             }
@@ -234,7 +317,12 @@ class SpotMeViewModel(
     fun stopRestTimer() {
         timerJob?.cancel()
         _session.update {
-            it.copy(restTimerRemainingSec = 0, restTimerTotalSec = 0, isTimerRunning = false)
+            it.copy(
+                restTimerRemainingSec = 0,
+                restTimerTotalSec = 0,
+                isTimerRunning = false,
+                isTimerPaused = false
+            )
         }
     }
 
@@ -407,6 +495,39 @@ class SpotMeViewModel(
         }
     }
 
+    fun estimateMealFromDescription(
+        profile: UserProfile?,
+        description: String,
+        mealSlot: String
+    ) {
+        val trimmed = description.trim()
+        if (trimmed.isEmpty()) return
+        val dietaryStyle = profile?.dietaryStyle ?: "balanced"
+        viewModelScope.launch {
+            _session.update { it.copy(isGeneratingMeal = true, errorMessage = null) }
+            try {
+                val estimated = aiService.estimateMealMacros(
+                    description = trimmed,
+                    mealSlot = mealSlot,
+                    dietaryStyle = dietaryStyle
+                )
+                _session.update {
+                    it.copy(isGeneratingMeal = false, mealSuggestion = estimated)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Meal estimation failed", e)
+                _session.update {
+                    it.copy(
+                        isGeneratingMeal = false,
+                        errorMessage = e.localizedMessage ?: "Could not estimate macros right now."
+                    )
+                }
+            }
+        }
+    }
+
     fun dismissMealSuggestion() {
         _session.update { it.copy(mealSuggestion = null) }
     }
@@ -414,10 +535,13 @@ class SpotMeViewModel(
     fun askBuddy(
         profile: UserProfile?,
         question: String,
-        contextTag: String = ""
+        contextTag: String = "",
+        history: List<BuddyMessage> = emptyList(),
+        workoutContextSummary: String = ""
     ) {
         val trimmed = question.trim()
         if (trimmed.isEmpty() || _session.value.isAskingBuddy) return
+        val activeRole = _session.value.selectedBuddyRole
         viewModelScope.launch {
             _session.update {
                 it.copy(isAskingBuddy = true, streamingCoachReply = "", errorMessage = null)
@@ -425,7 +549,14 @@ class SpotMeViewModel(
             try {
                 repository.addBuddyMessage("user", trimmed, contextTag).getOrThrow()
                 var finalAnswer = ""
-                aiService.askGymBuddyStream(profile, trimmed, contextTag).collect { partial ->
+                aiService.askGymBuddyStream(
+                    profile = profile,
+                    question = trimmed,
+                    contextTag = contextTag,
+                    history = history,
+                    role = activeRole,
+                    workoutContextSummary = workoutContextSummary
+                ).collect { partial ->
                     finalAnswer = partial
                     _session.update { it.copy(streamingCoachReply = partial) }
                 }
