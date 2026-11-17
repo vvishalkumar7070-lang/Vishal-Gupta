@@ -90,12 +90,23 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Brush
 import com.example.data.model.ExercisePrescription
 import com.example.data.model.UserProfile
 import com.example.data.model.WorkoutDay
+import com.example.ui.theme.CyberLime
+import com.example.ui.theme.NeonCyan
+import com.example.ui.theme.NeonEmber
+import com.example.ui.theme.HyperPurple
+import com.example.ui.theme.AmberGold
+import com.example.ui.theme.DarkGlassCard
+import com.example.ui.theme.DarkGlassBorder
+import com.example.ui.theme.getMuscleAccentColor
 import com.example.ui.theme.SuccessGreen
 import com.example.ui.theme.SuccessGreenSoft
 import com.example.ui.viewmodel.SessionUiState
@@ -117,7 +128,7 @@ fun TodayWorkoutScreen(
     onQuickSwap: (WorkoutDay, ExercisePrescription) -> Unit = { _, _ -> },
     onAiSwap: (WorkoutDay, ExercisePrescription) -> Unit = { _, _ -> },
     onAskBuddyAboutExercise: (String) -> Unit = {},
-    onLogWorkout: (WorkoutDay, String, String) -> Unit = { _, _, _ -> }    
+    onLogWorkout: (WorkoutDay, String, String) -> Unit = { _, _, _ -> }
 ) {
     val activeDay = workoutDays.find { it.dayNumber == session.selectedDayNumber }
         ?: workoutDays.firstOrNull()
@@ -189,12 +200,9 @@ fun TodayWorkoutScreen(
                             Surface(
                                 onClick = { onSelectDay(day.dayNumber) },
                                 shape = RoundedCornerShape(16.dp),
-                                color = if (selected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.surface
-                                },
-                                tonalElevation = if (selected) 0.dp else 1.dp,
+                                color = if (selected) DarkGlassCard else MaterialTheme.colorScheme.surface,
+                                border = if (selected) BorderStroke(1.5.dp, CyberLime) else BorderStroke(1.dp, DarkGlassBorder),
+                                tonalElevation = if (selected) 2.dp else 0.dp,
                                 modifier = Modifier.testTag("day_pill_${day.dayNumber}")
                             ) {
                                 Column(
@@ -204,20 +212,14 @@ fun TodayWorkoutScreen(
                                     Text(
                                         text = "DAY ${day.dayNumber}",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (selected) {
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurfaceVariant
-                                        }
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selected) CyberLime else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = if (day.isRestDay) "Rest" else "Train",
                                         style = MaterialTheme.typography.labelLarge,
-                                        color = if (selected) {
-                                            MaterialTheme.colorScheme.onPrimary
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface
-                                        }
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
@@ -283,20 +285,24 @@ fun TodayWorkoutScreen(
             } else {
                 item {
                     Card(
-                        shape = RoundedCornerShape(22.dp),
+                        shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (activeDay.isRestDay) {
-                                MaterialTheme.colorScheme.tertiaryContainer
+                                Color(0xFF131D28)
                             } else {
-                                MaterialTheme.colorScheme.primaryContainer
+                                Color(0xFF141F30)
                             }
+                        ),
+                        border = BorderStroke(
+                            1.dp,
+                            if (activeDay.isRestDay) NeonCyan.copy(alpha = 0.35f) else CyberLime.copy(alpha = 0.35f)
                         )
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -304,25 +310,32 @@ fun TodayWorkoutScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Surface(
-                                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                                    shape = RoundedCornerShape(50)
+                                    color = if (activeDay.isRestDay) NeonCyan.copy(alpha = 0.15f) else CyberLime.copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(50),
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (activeDay.isRestDay) NeonCyan.copy(alpha = 0.4f) else CyberLime.copy(alpha = 0.4f)
+                                    )
                                 ) {
                                     Text(
-                                        text = if (activeDay.isRestDay) "RECOVERY DAY" else "~${activeDay.estimatedMinutes} MIN",
+                                        text = if (activeDay.isRestDay) "⚡ RECOVERY & GROWTH" else "~${activeDay.estimatedMinutes} MIN SESSION",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurface,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (activeDay.isRestDay) NeonCyan else CyberLime,
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                     )
                                 }
                                 if (totalSets > 0) {
                                     Surface(
-                                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
-                                        shape = RoundedCornerShape(50)
+                                        color = Color.Black.copy(alpha = 0.45f),
+                                        shape = RoundedCornerShape(50),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
                                     ) {
                                         Text(
-                                            text = "$doneSets / $totalSets sets",
+                                            text = "$doneSets / $totalSets sets done",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurface,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (doneSets == totalSets && totalSets > 0) SuccessGreen else Color.White,
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                         )
                                     }
@@ -330,37 +343,48 @@ fun TodayWorkoutScreen(
                                     Icon(
                                         imageVector = if (activeDay.isRestDay) Icons.Filled.SelfImprovement else Icons.Filled.FitnessCenter,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                        tint = if (activeDay.isRestDay) NeonCyan else CyberLime
                                     )
                                 }
                             }
                             Text(
                                 text = activeDay.title,
                                 style = MaterialTheme.typography.headlineMedium,
-                                color = if (activeDay.isRestDay) {
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                }
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
                             )
                             Text(
                                 text = activeDay.focusArea,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = if (activeDay.isRestDay) {
-                                    MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.85f)
-                                } else {
-                                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                                }
+                                color = Color(0xFFCBD5E1)
                             )
                             if (totalSets > 0) {
-                                LinearProgressIndicator(
-                                    progress = { sessionProgress },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(6.dp),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f)
-                                )
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    LinearProgressIndicator(
+                                        progress = { sessionProgress },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(8.dp),
+                                        color = CyberLime,
+                                        trackColor = Color.White.copy(alpha = 0.1f)
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "${(sessionProgress * 100).toInt()}% COMPLETED",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = CyberLime,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "${activeDay.exercises.size} MOVEMENTS",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.LightGray
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -369,22 +393,129 @@ fun TodayWorkoutScreen(
                 if (activeDay.exercises.isEmpty()) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(20.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            shape = RoundedCornerShape(22.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkGlassCard),
+                            border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.35f))
                         ) {
                             Column(
                                 modifier = Modifier.padding(20.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Text(
-                                    text = "Muscles grow while you recover!",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = "Aim for a 20-minute brisk walk, hit your protein target in the Fuel tab, and hydrate well.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Surface(
+                                        color = NeonCyan.copy(alpha = 0.15f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.SelfImprovement,
+                                            contentDescription = null,
+                                            tint = NeonCyan,
+                                            modifier = Modifier.padding(8.dp)
+                                        )
+                                    }
+                                    Column {
+                                        Text(
+                                            text = "HYPERTROPHY & RECOVERY ZONE",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "Muscles don't grow in the gym — they grow during rest.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    }
+                                }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Surface(
+                                        color = Color.Black.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Text(text = "🚶", style = MaterialTheme.typography.titleMedium)
+                                            Column {
+                                                Text(
+                                                    text = "Active Walk: 6,000 - 8,000 steps",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                                Text(
+                                                    text = "Flushes lactic acid and promotes blood circulation to sore joints.",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color(0xFF94A3B8)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Surface(
+                                        color = Color.Black.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Text(text = "🥩", style = MaterialTheme.typography.titleMedium)
+                                            Column {
+                                                Text(
+                                                    text = "Hit 100% Daily Protein Target",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                                Text(
+                                                    text = "Check the Fuel tab for high-yield Desi protein choices today.",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color(0xFF94A3B8)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Surface(
+                                        color = Color.Black.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Text(text = "💧", style = MaterialTheme.typography.titleMedium)
+                                            Column {
+                                                Text(
+                                                    text = "Hydrate with 3.5+ Liters",
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                                Text(
+                                                    text = "Maintains intracellular hydration for muscle protein synthesis.",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = Color(0xFF94A3B8)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -482,14 +613,20 @@ private fun RestTimerBanner(
         targetValue = (remainingSec.toFloat() / totalSec.toFloat()).coerceIn(0f, 1f),
         label = "timer_progress"
     )
+    val isAlmostDone = remainingSec in 1..10 && !isPaused
+
     Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkGlassCard),
+        border = BorderStroke(
+            1.5.dp,
+            if (isAlmostDone) CyberLime else if (isPaused) AmberGold else NeonCyan
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -498,29 +635,47 @@ private fun RestTimerBanner(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Timer,
-                        contentDescription = "Rest timer",
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    Surface(
+                        color = (if (isAlmostDone) CyberLime else if (isPaused) AmberGold else NeonCyan).copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Filled.Timer,
+                                contentDescription = "Rest timer",
+                                tint = if (isAlmostDone) CyberLime else if (isPaused) AmberGold else NeonCyan
+                            )
+                        }
+                    }
                     Column {
                         Text(
-                            text = if (isPaused) "REST PAUSED" else "REST TIMER",
+                            text = when {
+                                isPaused -> "REST PAUSED"
+                                isAlmostDone -> "GET READY • 10s LEFT"
+                                else -> "REST & HYDRATE"
+                            },
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            fontWeight = FontWeight.Bold,
+                            color = when {
+                                isPaused -> AmberGold
+                                isAlmostDone -> CyberLime
+                                else -> NeonCyan
+                            }
                         )
                         Text(
                             text = formatted,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            style = MaterialTheme.typography.displayLarge.copy(fontSize = 32.sp, lineHeight = 36.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     }
                 }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     IconButton(
                         onClick = onToggleSound,
@@ -529,7 +684,7 @@ private fun RestTimerBanner(
                         Icon(
                             imageVector = if (soundEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
                             contentDescription = if (soundEnabled) "Mute timer chime" else "Enable timer chime",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            tint = Color.White
                         )
                     }
                     IconButton(
@@ -539,23 +694,52 @@ private fun RestTimerBanner(
                         Icon(
                             imageVector = if (isPaused) Icons.Filled.PlayArrow else Icons.Filled.Pause,
                             contentDescription = if (isPaused) "Resume timer" else "Pause timer",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            tint = if (isPaused) CyberLime else Color.White
                         )
                     }
-                    TextButton(onClick = onSubtractSeconds) {
-                        Text("-15s")
+                    Surface(
+                        onClick = onSubtractSeconds,
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.White.copy(alpha = 0.08f)
+                    ) {
+                        Text(
+                            text = "-15s",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                        )
                     }
-                    TextButton(
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Surface(
                         onClick = onAddSeconds,
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.White.copy(alpha = 0.08f),
                         modifier = Modifier.testTag("timer_add_15_button")
                     ) {
-                        Text("+15s")
+                        Text(
+                            text = "+15s",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                        )
                     }
-                    TextButton(
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Surface(
                         onClick = onStop,
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.Red.copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, Color.Red.copy(alpha = 0.4f)),
                         modifier = Modifier.testTag("timer_skip_button")
                     ) {
-                        Text("Skip")
+                        Text(
+                            text = "Skip",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFF6B6B),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                        )
                     }
                 }
             }
@@ -564,7 +748,8 @@ private fun RestTimerBanner(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(6.dp),
-                color = MaterialTheme.colorScheme.secondary
+                color = if (isAlmostDone) CyberLime else if (isPaused) AmberGold else NeonCyan,
+                trackColor = Color.White.copy(alpha = 0.1f)
             )
         }
     }
@@ -586,17 +771,18 @@ private fun ExerciseCoachCard(
 ) {
     var expandedCue by remember(exercise.id) { mutableStateOf(true) }
     val allSetsDone = completedSets >= exercise.sets
+    val muscleAccent = getMuscleAccentColor(exercise.muscleGroup)
 
     Card(
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (allSetsDone) {
-                SuccessGreenSoft.copy(alpha = 0.45f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
+            containerColor = if (allSetsDone) Color(0xFF0F231D) else DarkGlassCard
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(
+            1.dp,
+            if (allSetsDone) SuccessGreen.copy(alpha = 0.6f) else muscleAccent.copy(alpha = 0.35f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -609,101 +795,138 @@ private fun ExerciseCoachCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = RoundedCornerShape(8.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = exercise.muscleGroup.uppercase(),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                        Surface(
+                            color = muscleAccent.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, muscleAccent.copy(alpha = 0.45f))
+                        ) {
+                            Text(
+                                text = exercise.muscleGroup.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = muscleAccent,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                        if (allSetsDone) {
+                            Surface(
+                                color = SuccessGreen.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, SuccessGreen)
+                            ) {
+                                Text(
+                                    text = "COMPLETED",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SuccessGreen,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
                     }
                     Text(
                         text = exercise.name,
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                     Text(
                         text = "${exercise.sets} sets × ${exercise.reps} reps • ${exercise.restSeconds}s rest",
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFF94A3B8)
                     )
                 }
                 Surface(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clickable { expandedCue = !expandedCue }
                         .testTag("toggle_cue_${exercise.id}"),
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    color = Color.White.copy(alpha = 0.06f),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = if (expandedCue) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                            contentDescription = "Toggle form guide"
+                            contentDescription = "Toggle form guide",
+                            tint = Color.White
                         )
                     }
                 }
             }
 
-            // Interactive Weight Stepper saved to Firestore
+            // Interactive Weight Stepper styled like barbell plates
             Surface(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                color = Color.Black.copy(alpha = 0.35f),
                 shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (exercise.suggestedWeightKg > 0.0) {
-                            "Working Weight: ${formatWeight(exercise.suggestedWeightKg)} kg"
-                        } else {
-                            "Bodyweight (tap + to add load)"
-                        },
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Column {
+                        Text(
+                            text = "WORKING LOAD",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF94A3B8),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = if (exercise.suggestedWeightKg > 0.0) {
+                                "${formatWeight(exercise.suggestedWeightKg)} kg"
+                            } else {
+                                "Bodyweight"
+                            },
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = CyberLime
+                        )
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Surface(
                             onClick = { onAdjustWeight(-2.5) },
                             shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surface,
+                            color = Color(0xFF1E293B),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                             modifier = Modifier
                                 .size(40.dp)
                                 .testTag("weight_minus_${exercise.id}")
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Filled.Remove,
-                                    contentDescription = "Decrease weight by 2.5 kg",
-                                    modifier = Modifier.size(18.dp)
+                                Text(
+                                    text = "-2.5",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
                                 )
                             }
                         }
                         Surface(
                             onClick = { onAdjustWeight(2.5) },
                             shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
+                            color = CyberLime,
                             modifier = Modifier
                                 .size(40.dp)
                                 .testTag("weight_plus_${exercise.id}")
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Filled.Add,
-                                    contentDescription = "Increase weight by 2.5 kg",
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(18.dp)
+                                Text(
+                                    text = "+2.5",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
                                 )
                             }
                         }
@@ -711,7 +934,7 @@ private fun ExerciseCoachCard(
                 }
             }
 
-            // Interactive Set Pills
+            // High-Dopamine Set Completion Pills
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -721,7 +944,11 @@ private fun ExerciseCoachCard(
                     Surface(
                         onClick = onToggleSet,
                         shape = RoundedCornerShape(12.dp),
-                        color = if (done) SuccessGreenSoft else MaterialTheme.colorScheme.surfaceVariant,
+                        color = if (done) SuccessGreen.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.06f),
+                        border = BorderStroke(
+                            1.dp,
+                            if (done) SuccessGreen else Color.White.copy(alpha = 0.15f)
+                        ),
                         modifier = Modifier
                             .height(48.dp)
                             .testTag("set_pill_${exercise.id}_$setIndex")
@@ -742,7 +969,8 @@ private fun ExerciseCoachCard(
                             Text(
                                 text = "Set $setIndex",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = if (done) SuccessGreen else MaterialTheme.colorScheme.onSurface
+                                fontWeight = FontWeight.Bold,
+                                color = if (done) SuccessGreen else Color.White
                             )
                         }
                     }
@@ -750,7 +978,8 @@ private fun ExerciseCoachCard(
                 Surface(
                     onClick = onStartRest,
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    color = NeonCyan.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, NeonCyan.copy(alpha = 0.4f)),
                     modifier = Modifier.height(48.dp)
                 ) {
                     Row(
@@ -761,13 +990,14 @@ private fun ExerciseCoachCard(
                         Icon(
                             imageVector = Icons.Filled.Timer,
                             contentDescription = "Start rest timer",
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            tint = NeonCyan,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = "${exercise.restSeconds}s",
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            fontWeight = FontWeight.Bold,
+                            color = NeonCyan
                         )
                     }
                 }
@@ -776,8 +1006,9 @@ private fun ExerciseCoachCard(
             AnimatedVisibility(visible = expandedCue) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        color = Color.Black.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -788,27 +1019,29 @@ private fun ExerciseCoachCard(
                             Icon(
                                 imageVector = Icons.Filled.Info,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.tertiary,
+                                tint = NeonCyan,
                                 modifier = Modifier.size(18.dp)
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    text = "How to set up & do it",
+                                    text = "Biomechanical Cue",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
                                 )
                                 Text(
                                     text = exercise.setupCue,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = Color(0xFFCBD5E1)
                                 )
                             }
                         }
                     }
 
                     Surface(
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
+                        color = Color(0xFF2A1515),
                         shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color(0xFFFF5252).copy(alpha = 0.35f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -819,19 +1052,20 @@ private fun ExerciseCoachCard(
                             Icon(
                                 imageVector = Icons.Filled.Warning,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary,
+                                tint = Color(0xFFFF5252),
                                 modifier = Modifier.size(18.dp)
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    text = "Mistake to avoid",
+                                    text = "Form Mistake to Avoid",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFF8A80)
                                 )
                                 Text(
                                     text = exercise.formMistakeToAvoid,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    color = Color(0xFFFFCDD2)
                                 )
                             }
                         }
@@ -843,6 +1077,31 @@ private fun ExerciseCoachCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                OutlinedButton(
+                    onClick = onOpenDemo,
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = CyberLime.copy(alpha = 0.15f)
+                    ),
+                    border = BorderStroke(1.dp, CyberLime.copy(alpha = 0.6f)),
+                    modifier = Modifier.testTag("open_demo_${exercise.id}")
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.PlayCircle,
+                        contentDescription = "Watch Exercise Demo GIF",
+                        tint = CyberLime,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.size(6.dp))
+                    Text(
+                        text = "▶ 3D Path & GIF",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = CyberLime,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
                 if (exercise.alternativeExercise.isNotBlank()) {
                     OutlinedButton(
                         onClick = onQuickSwap,
@@ -857,7 +1116,7 @@ private fun ExerciseCoachCard(
                         )
                         Spacer(modifier = Modifier.size(6.dp))
                         Text(
-                            text = "Taken? Swap: ${exercise.alternativeExercise}",
+                            text = "Swap: ${exercise.alternativeExercise}",
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -884,30 +1143,6 @@ private fun ExerciseCoachCard(
                 }
 
                 OutlinedButton(
-                    onClick = onOpenDemo,
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-                    ),
-                    modifier = Modifier.testTag("open_demo_${exercise.id}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.PlayCircle,
-                        contentDescription = "Watch Exercise Demo GIF",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text(
-                        text = "Demo & GIF",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                OutlinedButton(
                     onClick = onAskBuddy,
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -923,8 +1158,8 @@ private fun ExerciseCoachCard(
                 }
             }
         }
-        }
     }
+}
 
 private fun formatWeight(weight: Double): String {
     return if (weight % 1.0 == 0.0) {
@@ -1095,7 +1330,7 @@ private fun ExerciseDemoDialog(
                                             <html>
                                             <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
                                             <body style="margin:0;padding:0;background:#0E131B;display:flex;align-items:center;justify-content:center;height:100vh;">
-                                                <img src="${'$'}gifUrl" style="max-width:100%;max-height:100%;border-radius:14px;object-fit:contain;" />
+                                                <img src="$gifUrl" style="max-width:100%;max-height:100%;border-radius:14px;object-fit:contain;" />
                                             </body>
                                             </html>
                                         """.trimIndent()
