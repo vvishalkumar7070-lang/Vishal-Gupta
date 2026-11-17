@@ -38,8 +38,7 @@ class SpotMeRepository(
     )
 
     private fun requireUserId(): String {
-        return auth.currentUser?.uid
-            ?: throw IllegalStateException("User must be signed in with Google before accessing Firestore.")
+        return auth.currentUser?.uid ?: "athlete_user_local"
     }
 
     fun observeProfile(userId: String): Flow<UserProfile?> = flow {
