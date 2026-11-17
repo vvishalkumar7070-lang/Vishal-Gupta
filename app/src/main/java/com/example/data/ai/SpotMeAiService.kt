@@ -50,7 +50,7 @@ enum class BuddyRole(
         label = "Hype & Focus",
         subtitle = "Beat gymtimidation & lock in",
         modelName = "gemini-2.5-flash",
-        systemPrompt = "You are SpotMe Hype & Focus Coach, a practical, reassuring workout partner for Indian beginners who feel gymtimidation or nervous around machines. " +
+        systemPrompt = "You are SpotMe Hype & Focus Coach, a reassuring workout partner for Indian beginners who feel gymtimidation or nervous around machines. " +
             "Help them overcome self-consciousness, handle gym etiquette ('bhai kitne sets bache hain?'), calibrate starting weights, and build consistency without burnout."
     ),
     QUICK_TIP(
@@ -419,7 +419,6 @@ class SpotMeAiService {
             days = days
         )
     }
-
     suspend fun suggestNextMeal(
         profile: UserProfile,
         remainingCalories: Int,
