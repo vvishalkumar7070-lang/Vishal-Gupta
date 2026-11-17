@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Restaurant
 import androidx.compose.material.icons.outlined.SmartToy
@@ -61,6 +63,7 @@ import com.example.data.model.WorkoutLog
 import com.example.data.repository.SpotMeRepository
 import com.example.ui.screens.AuthScreen
 import com.example.ui.screens.BuddyCoachScreen
+import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.NutritionScreen
 import com.example.ui.screens.OnboardingScreen
 import com.example.ui.screens.PlanProfileScreen
@@ -72,6 +75,7 @@ import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
 
 object SpotMeRoutes {
+    const val DASHBOARD = "dashboard"
     const val TODAY = "today"
     const val FUEL = "fuel"
     const val BUDDY = "buddy"
@@ -86,6 +90,7 @@ private data class NavTab(
 )
 
 private val SpotMeTabs = listOf(
+    NavTab(SpotMeRoutes.DASHBOARD, "Dashboard", Icons.Filled.Dashboard, Icons.Outlined.Dashboard),
     NavTab(SpotMeRoutes.TODAY, "Today", Icons.Filled.FitnessCenter, Icons.Outlined.FitnessCenter),
     NavTab(SpotMeRoutes.FUEL, "Fuel", Icons.Filled.Restaurant, Icons.Outlined.Restaurant),
     NavTab(SpotMeRoutes.BUDDY, "Buddy", Icons.Filled.SmartToy, Icons.Outlined.SmartToy),
@@ -217,7 +222,6 @@ private fun AuthenticatedSpotMeApp(
                     (mealLogsState as? UiState.Success)?.data ?: emptyList()
                 val buddyMessages: List<BuddyMessage> =
                     (buddyMessagesState as? UiState.Success)?.data ?: emptyList()
-
                 BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                     val useRail = maxWidth >= 700.dp
 
@@ -284,9 +288,41 @@ private fun AuthenticatedSpotMeApp(
 
                             NavHost(
                                 navController = navController,
-                                startDestination = SpotMeRoutes.TODAY,
+                                startDestination = SpotMeRoutes.DASHBOARD,
                                 modifier = Modifier.weight(1f)
                             ) {
+                                composable(SpotMeRoutes.DASHBOARD) {
+                                    DashboardScreen(
+                                        profile = profile,
+                                        workoutDays = workoutDays,
+                                        workoutLogs = workoutLogs,
+                                        mealLogs = mealLogs,
+                                        session = session,
+                                        onNavigateToToday = {
+                                            navController.navigate(SpotMeRoutes.TODAY) {
+                                                popUpTo(SpotMeRoutes.DASHBOARD) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        },
+                                        onNavigateToFuel = {
+                                            navController.navigate(SpotMeRoutes.FUEL) {
+                                                popUpTo(SpotMeRoutes.DASHBOARD) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        },
+                                        onNavigateToBuddy = {
+                                            navController.navigate(SpotMeRoutes.BUDDY) {
+                                                popUpTo(SpotMeRoutes.DASHBOARD) { saveState = true }
+                                                launchSingleTop = true
+                                                restoreState = true
+                                            }
+                                        },
+                                        onSelectDay = viewModel::selectDay
+                                    )
+                                }
+
                                 composable(SpotMeRoutes.TODAY) {
                                     TodayWorkoutScreen(
                                         profile = profile,
